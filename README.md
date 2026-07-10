@@ -3,7 +3,8 @@
 A 100% client-side, GitHub Pages–ready dashboard for monitoring daily
 Global Count activity across Hamleys India stores. No backend, no database —
 just HTML, CSS and JavaScript, powered by SheetJS. Purely tabular (no charts)
-by design — KPI cards plus RM / ROM / SD / Store / Raw Data tables.
+by design — KPI cards plus RM / ROM / SD / Date wise Completion / Store wise GC
+/ Raw Data tables.
 
 ---
 
@@ -110,10 +111,15 @@ Only needed when stores open/close or reporting lines change:
     also a known ROM name is automatically excluded here (that person is
     acting as the ROM for that store, not a distinct SD), so names never
     repeat between the ROM and SD tables.
-  - **Store wise GC** — one row per Global Count entry, in the same shape as
-    the source Excel (Store Code, Store Name, RM, ROM, SD, Date, Month,
-    Global Count, Total Net Qty Diff, Total Net MAP Value Diff), with search,
-    column sort, pagination and Export Excel.
+  - **Date wise Completion** — Date, Total Stores, GC Stores, Completion %,
+    one row per calendar date on which a Global Count was recorded.
+  - **Store wise GC** — one row per Global Count entry, in the same column
+    shape as the source Excel: Store Code, Store Name, Date, No. of SKU's
+    Counted, Shortage Qty, Shortage MAP Value, Excess Qty, Excess MAP Value,
+    Total Net Qty Difference, Total Net MAP Value Difference, Global Count
+    Done by, Global Count Validated by, Shortage Qty Moved to 2997 ?, Reason
+    for Short or Excess Qty — with search, column sort, pagination and
+    Export Excel.
   - **Raw Data** — every column from your Excel, dynamically rendered, with
     search, column sort, pagination, Export Excel/CSV and Print.
 - Auto-refresh every 5 minutes, animated KPI counters, responsive layout for

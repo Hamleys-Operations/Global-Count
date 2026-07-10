@@ -185,11 +185,15 @@ function resolveColumnIndexes() {
     date: findColIndex(c, ['date of global count', 'date']),
     gc: findColIndex(c, ["no. of sku's counted", 'no of skus counted', 'sku', 'global count']),
     shortageQty: findColIndex(c, ['shortage qty']),
+    shortageMapValue: findColIndex(c, ['shortage map value']),
     excessQty: findColIndex(c, ['excess qty']),
+    excessMapValue: findColIndex(c, ['excess map value']),
     netQtyDiff: findColIndex(c, ['total net qty difference', 'net qty difference']),
     netValueDiff: findColIndex(c, ['total net map value difference', 'net map value difference']),
     doneBy: findColIndex(c, ['global count done by', 'done by']),
     validatedBy: findColIndex(c, ['global count validated by', 'validated by']),
+    movedTo2997: findColIndex(c, ['shortage qty moved to 2997', 'moved to 2997']),
+    reason: findColIndex(c, ['reason for short or excess qty', 'reason']),
   };
 }
 
@@ -227,11 +231,15 @@ function buildRecords() {
       year: dateVal ? dateVal.getUTCFullYear() : null,
       gc,
       shortageQty: idx.shortageQty !== -1 ? Number(row[idx.shortageQty]) || 0 : 0,
+      shortageMapValue: idx.shortageMapValue !== -1 ? Number(row[idx.shortageMapValue]) || 0 : 0,
       excessQty: idx.excessQty !== -1 ? Number(row[idx.excessQty]) || 0 : 0,
+      excessMapValue: idx.excessMapValue !== -1 ? Number(row[idx.excessMapValue]) || 0 : 0,
       netQtyDiff: idx.netQtyDiff !== -1 ? Number(row[idx.netQtyDiff]) || 0 : 0,
       netValueDiff: idx.netValueDiff !== -1 ? Number(row[idx.netValueDiff]) || 0 : 0,
       doneBy: idx.doneBy !== -1 ? row[idx.doneBy] : '',
       validatedBy: idx.validatedBy !== -1 ? row[idx.validatedBy] : '',
+      movedTo2997: idx.movedTo2997 !== -1 ? row[idx.movedTo2997] : '',
+      reason: idx.reason !== -1 ? row[idx.reason] : '',
     };
   });
 }
@@ -426,11 +434,30 @@ function completionBadge(pct) {
 }
 
 /* ---------------------------------------------------------------------- *
- * 8. RENDER: STORE WISE GC (as per Excel format — one row per count entry)
+ * 8. RENDER: DATE WISE COMPLETION SUMMARY
+ * ---------------------------------------------------------------------- */
+function renderDateSummary() {
+  const totalStoresMaster = APP.storeMaster.length || new Set(APP.records.map(r => r.storeCode)).size;
+  const agg = aggregateBy(APP.filtered, r => r.dateStr, () => totalStoresMaster)
+    .filter(a => a.key && a.key !== 'Unassigned')
+    .sort((a, b) => a.key.localeCompare(b.key));
+
+  const tbody = $('#dateSummaryTable tbody');
+  tbody.innerHTML = agg.map(a => `
+    <tr>
+      <td><strong>${fmtDate(a.key)}</strong></td>
+      <td>${fmtNum(a.masterTotal)}</td>
+      <td>${fmtNum(a.stores)}</td>
+      <td>${completionBadge(a.completion)}</td>
+    </tr>`).join('') || '<tr><td colspan="4" class="text-muted" style="text-align:center;padding:20px;">No data for selected filters</td></tr>';
+}
+
+/* ---------------------------------------------------------------------- *
+ * 9. RENDER: STORE WISE GC (as per Excel format — one row per count entry)
  * ---------------------------------------------------------------------- */
 function renderStoreWiseGC() {
   const term = ($('#storeSearchInput')?.value || '').toLowerCase();
-  let list = APP.filtered.filter(r => !term || `${r.storeCode} ${r.storeName} ${r.rm} ${r.rom} ${r.sd}`.toLowerCase().includes(term));
+  let list = APP.filtered.filter(r => !term || `${r.storeCode} ${r.storeName} ${r.doneBy} ${r.validatedBy} ${r.reason}`.toLowerCase().includes(term));
 
   list = [...list].sort((a, b) => {
     const dir = APP.storeSort.dir === 'asc' ? 1 : -1;
@@ -450,12 +477,19 @@ function renderStoreWiseGC() {
     <tr>
       <td>${r.storeCode}</td>
       <td><strong>${r.storeName}</strong></td>
-      <td>${r.rm}</td><td>${r.rom}</td><td>${r.sd}</td>
-      <td>${fmtDate(r.date)}</td><td>${r.month}</td>
+      <td>${fmtDate(r.date)}</td>
       <td><strong>${fmtNum(r.gc)}</strong></td>
+      <td>${fmtNum(r.shortageQty)}</td>
+      <td>${fmtNum(r.shortageMapValue, 2)}</td>
+      <td>${fmtNum(r.excessQty)}</td>
+      <td>${fmtNum(r.excessMapValue, 2)}</td>
       <td>${fmtNum(r.netQtyDiff)}</td>
       <td>${fmtNum(r.netValueDiff, 2)}</td>
-    </tr>`).join('') || '<tr><td colspan="10" style="text-align:center;padding:20px;" class="text-muted">No records match filters</td></tr>';
+      <td>${r.doneBy || ''}</td>
+      <td>${r.validatedBy || ''}</td>
+      <td>${r.movedTo2997 || ''}</td>
+      <td>${r.reason || ''}</td>
+    </tr>`).join('') || '<tr><td colspan="14" style="text-align:center;padding:20px;" class="text-muted">No records match filters</td></tr>';
 
   renderPagination('#storePagination', APP.storePage, totalPages, (p) => { APP.storePage = p; renderStoreWiseGC(); });
 
@@ -480,7 +514,7 @@ function renderPagination(sel, current, total, onPage) {
 }
 
 /* ---------------------------------------------------------------------- *
- * 9. RENDER: RAW DATA (fully dynamic columns/rows)
+ * 10. RENDER: RAW DATA (fully dynamic columns/rows)
  * ---------------------------------------------------------------------- */
 function renderRawHead() {
   const headRow = $('#rawDataHeadRow');
@@ -524,19 +558,20 @@ function formatRawCell(cell) {
 }
 
 /* ---------------------------------------------------------------------- *
- * 10. RENDER ALL
+ * 11. RENDER ALL
  * ---------------------------------------------------------------------- */
 function renderAll() {
   renderKPIs();
   renderRM();
   renderROM();
   renderSD();
+  renderDateSummary();
   renderStoreWiseGC();
   renderRaw();
 }
 
 /* ---------------------------------------------------------------------- *
- * 11. EXPORTS
+ * 12. EXPORTS
  * ---------------------------------------------------------------------- */
 function exportRawExcel() {
   const ws = XLSX.utils.aoa_to_sheet([APP.columns, ...APP.rawFilteredRows]);
@@ -552,9 +587,20 @@ function exportRawCsv() {
 
 function exportStoreExcel() {
   const data = (APP.storeExportData || []).map(r => ({
-    'Store Code': r.storeCode, 'Store Name': r.storeName, RM: r.rm, ROM: r.rom, SD: r.sd,
-    Date: fmtDate(r.date), Month: r.month, 'Global Count': r.gc,
-    'Total Net Qty Diff': r.netQtyDiff, 'Total Net MAP Value Diff': r.netValueDiff,
+    'Store Code': r.storeCode,
+    'Store Name': r.storeName,
+    Date: fmtDate(r.date),
+    "No. of SKU's Counted": r.gc,
+    'Shortage Qty': r.shortageQty,
+    'Shortage MAP Value': r.shortageMapValue,
+    'Excess Qty': r.excessQty,
+    'Excess MAP Value': r.excessMapValue,
+    'Total Net Qty Difference': r.netQtyDiff,
+    'Total Net MAP Value Difference': r.netValueDiff,
+    'Global Count Done by': r.doneBy,
+    'Global Count Validated by': r.validatedBy,
+    'Shortage Qty Moved to 2997 ?': r.movedTo2997,
+    'Reason for Short or Excess Qty': r.reason,
   }));
   const ws = XLSX.utils.json_to_sheet(data);
   const wb = XLSX.utils.book_new();
@@ -563,7 +609,7 @@ function exportStoreExcel() {
 }
 
 /* ---------------------------------------------------------------------- *
- * 12. THEME / TABS / EVENTS
+ * 13. THEME / TABS / EVENTS
  * ---------------------------------------------------------------------- */
 function initTheme() {
   const saved = localStorage.getItem('hamleys-gc-theme') || 'light';
@@ -620,7 +666,7 @@ function initSortableHeaders() {
 }
 
 /* ---------------------------------------------------------------------- *
- * 13. INIT
+ * 14. INIT
  * ---------------------------------------------------------------------- */
 document.addEventListener('DOMContentLoaded', async () => {
   initTheme();

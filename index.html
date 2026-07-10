@@ -88,6 +88,7 @@
       <button class="tab-btn active" data-tab="rm">🧑‍💼 RM Summary</button>
       <button class="tab-btn" data-tab="rom">🧑‍💻 ROM Summary</button>
       <button class="tab-btn" data-tab="sd">🧑‍🔧 SD Summary</button>
+      <button class="tab-btn" data-tab="dateSummary">📅 Date wise Completion</button>
       <button class="tab-btn" data-tab="store">🏬 Store wise GC</button>
       <button class="tab-btn" data-tab="raw">📋 Raw Data</button>
     </nav>
@@ -146,25 +147,45 @@
       </div>
     </section>
 
+    <!-- ===================== DATE WISE COMPLETION TAB ===================== -->
+    <section class="tab-panel" id="tab-dateSummary">
+      <div class="panel">
+        <div class="panel-title"><span class="title-text"><span class="accent-bar"></span>Date wise Completion Summary</span></div>
+        <div class="table-scroll"><table class="data-table" id="dateSummaryTable">
+          <thead><tr>
+            <th data-key="key">Date</th>
+            <th data-key="masterTotal">Total Stores</th>
+            <th data-key="stores">GC Stores</th>
+            <th data-key="completion">Completion %</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table></div>
+      </div>
+    </section>
+
     <!-- ===================== STORE WISE GC TAB ===================== -->
     <section class="tab-panel" id="tab-store">
       <div class="panel">
         <div class="table-toolbar">
-          <div class="table-search"><input type="text" id="storeSearchInput" placeholder="Search store, RM, ROM, SD…" /></div>
+          <div class="table-search"><input type="text" id="storeSearchInput" placeholder="Search store code, name, reason…" /></div>
           <button class="btn btn-outline btn-sm" id="storeExportBtn">⬇ Export Excel</button>
         </div>
         <div class="table-scroll"><table class="data-table" id="storeTable">
           <thead><tr>
             <th data-key="storeCode">Store Code</th>
             <th data-key="storeName">Store Name</th>
-            <th data-key="rm">RM</th>
-            <th data-key="rom">ROM</th>
-            <th data-key="sd">SD</th>
             <th data-key="date">Date</th>
-            <th data-key="month">Month</th>
-            <th data-key="gc">Global Count</th>
-            <th data-key="netQtyDiff">Total Net Qty Diff</th>
-            <th data-key="netValueDiff">Total Net MAP Value Diff</th>
+            <th data-key="gc">No. of SKU's Counted</th>
+            <th data-key="shortageQty">Shortage Qty</th>
+            <th data-key="shortageMapValue">Shortage MAP Value</th>
+            <th data-key="excessQty">Excess Qty</th>
+            <th data-key="excessMapValue">Excess MAP Value</th>
+            <th data-key="netQtyDiff">Total Net Qty Difference</th>
+            <th data-key="netValueDiff">Total Net MAP Value Difference</th>
+            <th data-key="doneBy">Global Count Done by</th>
+            <th data-key="validatedBy">Global Count Validated by</th>
+            <th data-key="movedTo2997">Shortage Qty Moved to 2997 ?</th>
+            <th data-key="reason">Reason for Short or Excess Qty</th>
           </tr></thead>
           <tbody></tbody>
         </table></div>
