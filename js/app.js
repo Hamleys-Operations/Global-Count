@@ -268,7 +268,14 @@ function populateFilterOptions() {
   const sds = uniqueSorted(APP.records.map(r => r.sd));
   const regions = uniqueSorted(APP.records.map(r => r.region));
 
-  fillSelect('#fDate', dates, v => fmtDate(v));
+  // Date is a native calendar picker (<input type="date">), not a dropdown —
+  // just bound its min/max to the range actually present in the data.
+  const dateInput = $('#fDate');
+  if (dateInput && dates.length) {
+    dateInput.min = dates[0];
+    dateInput.max = dates[dates.length - 1];
+  }
+
   fillSelect('#fMonth', months);
   fillSelect('#fYear', years);
   fillSelect('#fRM', rms);

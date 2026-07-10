@@ -1,7 +1,7 @@
 {
  "meta": {
   "lastUpdated": "2026-07-10",
-  "generatedAt": "2026-07-10T11:20:49.959Z",
+  "generatedAt": "2026-07-10T11:48:41.583Z",
   "sourceFile": "GC as on 08.07.2026 - with Net formulas.xlsx",
   "totalStoresMaster": 120
  },
@@ -8657,841 +8657,841 @@
    "code": "THD8",
    "name": "Express Avenue Chennai",
    "rm": "Yogesh",
-   "rom": "Divya Lakshmi",
-   "sd": "Divya Lakshmi"
+   "sd": "Divya Lakshmi",
+   "rom": "Divya Lakshmi"
   },
   {
    "code": "THE0",
    "name": "PMC Bangalore",
    "rm": "Bipro",
-   "rom": "Ashlin Moses",
-   "sd": "Harnest"
+   "sd": "Harnest",
+   "rom": "Ashlin Moses"
   },
   {
    "code": "THE1",
    "name": "Elante Chandigarh",
    "rm": "Bipro",
-   "rom": "Ajay Gill",
-   "sd": "Harsh Sharma"
+   "sd": "Harsh Sharma",
+   "rom": "Ajay Gill"
   },
   {
    "code": "THE2",
    "name": "Alpha One Ahmedabad",
    "rm": "Yogesh",
-   "rom": "Shirish Mastud",
-   "sd": "Virendra Rahevar"
+   "sd": "Virendra Rahevar",
+   "rom": "Shirish Mastud"
   },
   {
    "code": "THE9",
    "name": "Viviana Thane",
    "rm": "Yogesh",
-   "rom": "Shirish Mastud",
-   "sd": "Sudhir"
+   "sd": "Sudhir",
+   "rom": "Shirish Mastud"
   },
   {
    "code": "THF0",
    "name": "PMC Chennai",
    "rm": "Yogesh",
-   "rom": "Divya Lakshmi",
-   "sd": "Damodharan"
+   "sd": "Damodharan",
+   "rom": "Divya Lakshmi"
   },
   {
    "code": "THF1",
    "name": "Brookfields Coimbatore",
    "rm": "Yogesh",
-   "rom": "Divya Lakshmi",
-   "sd": "Damodharan"
+   "sd": "Damodharan",
+   "rom": "Divya Lakshmi"
   },
   {
    "code": "THF2",
    "name": "Logix Mall Noida",
    "rm": "Bipro",
-   "rom": "Lalit Mohan",
-   "sd": "Khubaib"
+   "sd": "Khubaib",
+   "rom": "Lalit Mohan"
   },
   {
    "code": "THF4",
    "name": "Quest Kolkatta",
    "rm": "Yogesh",
-   "rom": "Chetan",
-   "sd": "Manmohan"
+   "sd": "Manmohan",
+   "rom": "Chetan"
   },
   {
    "code": "THF6",
    "name": "Mumbai T2D Airport",
    "rm": "Yogesh",
-   "rom": "Shirish Mastud",
-   "sd": "Nasir Shaikh"
+   "sd": "Nasir Shaikh",
+   "rom": "Shirish Mastud"
   },
   {
    "code": "THF9",
    "name": "Amb Gurg Delhi",
    "rm": "Bipro",
-   "rom": "Ajay Gill",
-   "sd": "Paramjeet"
+   "sd": "Paramjeet",
+   "rom": "Ajay Gill"
   },
   {
    "code": "THG0",
    "name": "Lulu Mall",
    "rm": "Yogesh",
-   "rom": "Divya Lakshmi",
-   "sd": "Divya Lakshmi"
+   "sd": "Divya Lakshmi",
+   "rom": "Divya Lakshmi"
   },
   {
    "code": "THG2",
    "name": "Treasure Island Indore",
    "rm": "Yogesh",
-   "rom": "Chetan",
-   "sd": "Chetan"
+   "sd": "Chetan",
+   "rom": "Chetan"
   },
   {
    "code": "THG3",
    "name": "Forum Sujana Hyderabad",
    "rm": "Bipro",
-   "rom": "Ashlin Moses",
-   "sd": "Narayana"
+   "sd": "Narayana",
+   "rom": "Ashlin Moses"
   },
   {
    "code": "THG4",
    "name": "1MG Bangalore",
    "rm": "Bipro",
-   "rom": "Ashlin Moses",
-   "sd": "Harnest"
+   "sd": "Harnest",
+   "rom": "Ashlin Moses"
   },
   {
    "code": "THG5",
    "name": "Vadodara",
    "rm": "Yogesh",
-   "rom": "Shirish Mastud",
-   "sd": "Virendra Rahevar"
+   "sd": "Virendra Rahevar",
+   "rom": "Shirish Mastud"
   },
   {
    "code": "THG7",
    "name": "Forum Chennai",
    "rm": "Yogesh",
-   "rom": "Divya Lakshmi",
-   "sd": "Damodharan"
+   "sd": "Damodharan",
+   "rom": "Divya Lakshmi"
   },
   {
    "code": "THG8",
    "name": "Pavilion Ludhiana",
    "rm": "Bipro",
-   "rom": "Lalit Mohan",
-   "sd": "Lalit Mohan"
+   "sd": "Lalit Mohan",
+   "rom": "Lalit Mohan"
   },
   {
    "code": "THH3",
    "name": "Delhi Selectcity",
    "rm": "Bipro",
-   "rom": "Ajay Gill",
-   "sd": "Harsh Sharma"
+   "sd": "Harsh Sharma",
+   "rom": "Ajay Gill"
   },
   {
    "code": "THH8",
    "name": "L&T Seawoods",
    "rm": "Yogesh",
-   "rom": "Shirish Mastud",
-   "sd": "Sudhir"
+   "sd": "Sudhir",
+   "rom": "Shirish Mastud"
   },
   {
    "code": "THF8",
    "name": "Delhi T3A Airport",
    "rm": "Bipro",
-   "rom": "Lalit Mohan",
-   "sd": "Khubaib"
+   "sd": "Khubaib",
+   "rom": "Lalit Mohan"
   },
   {
    "code": "THH2",
    "name": "Delhi Pacific",
    "rm": "Bipro",
-   "rom": "Ajay Gill",
-   "sd": "Harsh Sharma"
+   "sd": "Harsh Sharma",
+   "rom": "Ajay Gill"
   },
   {
    "code": "THI5",
    "name": "Vega Siliguri",
    "rm": "Yogesh",
-   "rom": "Chetan",
-   "sd": "Manmohan"
+   "sd": "Manmohan",
+   "rom": "Chetan"
   },
   {
    "code": "THI8",
    "name": "Mumbai Airport T1 Arrival",
    "rm": "Yogesh",
-   "rom": "Shirish Mastud",
-   "sd": "Nasir Shaikh"
+   "sd": "Nasir Shaikh",
+   "rom": "Shirish Mastud"
   },
   {
    "code": "THI2",
    "name": "ICC Pune",
    "rm": "Yogesh",
-   "rom": "Chetan",
-   "sd": "Subodh"
+   "sd": "Subodh",
+   "rom": "Chetan"
   },
   {
    "code": "THI7",
    "name": "WTP Jaipur",
    "rm": "Bipro",
-   "rom": "Ajay Gill",
-   "sd": "Ajay Gill"
+   "sd": "Ajay Gill",
+   "rom": "Ajay Gill"
   },
   {
    "code": "THJ0",
    "name": "Inorbit Mall, Hyderabad",
    "rm": "Bipro",
-   "rom": "Ashlin Moses",
-   "sd": "Narayana"
+   "sd": "Narayana",
+   "rom": "Ashlin Moses"
   },
   {
    "code": "THI9",
    "name": "Xperia Mall, Dombivali",
    "rm": "Yogesh",
-   "rom": "Shirish Mastud",
-   "sd": "Sudhir"
+   "sd": "Sudhir",
+   "rom": "Shirish Mastud"
   },
   {
    "code": "THI3",
    "name": "Prozone Coimbatore",
    "rm": "Yogesh",
-   "rom": "Divya Lakshmi",
-   "sd": "Damodharan"
+   "sd": "Damodharan",
+   "rom": "Divya Lakshmi"
   },
   {
    "code": "THJ1",
    "name": "Alphaone, Amritsar",
    "rm": "Bipro",
-   "rom": "Lalit Mohan",
-   "sd": "Lalit Mohan"
+   "sd": "Lalit Mohan",
+   "rom": "Lalit Mohan"
   },
   {
    "code": "THJ2",
    "name": "Oberoi Mall Mumbai",
    "rm": "Yogesh",
-   "rom": "Shirish Mastud",
-   "sd": "Sudhir"
+   "sd": "Sudhir",
+   "rom": "Shirish Mastud"
   },
   {
    "code": "THK1",
    "name": "VR Surat",
    "rm": "Yogesh",
-   "rom": "Shirish Mastud",
-   "sd": "Virendra Rahevar"
+   "sd": "Virendra Rahevar",
+   "rom": "Shirish Mastud"
   },
   {
    "code": "THP1",
    "name": "VR Chennai",
    "rm": "Yogesh",
-   "rom": "Divya Lakshmi",
-   "sd": "Divya Lakshmi"
+   "sd": "Divya Lakshmi",
+   "rom": "Divya Lakshmi"
   },
   {
    "code": "THO9",
    "name": "UB City Bangalore",
    "rm": "Bipro",
-   "rom": "Ashlin Moses",
-   "sd": "Harnest"
+   "sd": "Harnest",
+   "rom": "Ashlin Moses"
   },
   {
    "code": "THO8",
    "name": "Shantiniketan Bangalore",
    "rm": "Bipro",
-   "rom": "Ashlin Moses",
-   "sd": "Harnest"
+   "sd": "Harnest",
+   "rom": "Ashlin Moses"
   },
   {
    "code": "THN3",
    "name": "L&T Punjugutta",
    "rm": "Bipro",
-   "rom": "Ashlin Moses",
-   "sd": "Narayana"
+   "sd": "Narayana",
+   "rom": "Ashlin Moses"
   },
   {
    "code": "THK0",
    "name": "Mall of India, Noida New",
    "rm": "Bipro",
-   "rom": "Lalit Mohan",
-   "sd": "Ashish Juyal"
+   "sd": "Ashish Juyal",
+   "rom": "Lalit Mohan"
   },
   {
    "code": "THQ3",
    "name": "Forum Esplanadone Bhubn",
    "rm": "Yogesh",
-   "rom": "Chetan",
-   "sd": "Manmohan"
+   "sd": "Manmohan",
+   "rom": "Chetan"
   },
   {
    "code": "THP2",
    "name": "Indore C21",
    "rm": "Yogesh",
-   "rom": "Chetan",
-   "sd": "Chetan"
+   "sd": "Chetan",
+   "rom": "Chetan"
   },
   {
    "code": "THQ2",
    "name": "Forum Mysore",
    "rm": "Bipro",
-   "rom": "Ashlin Moses",
-   "sd": "Umesh"
+   "sd": "Umesh",
+   "rom": "Ashlin Moses"
   },
   {
    "code": "THQ0",
    "name": "Ambuja Raipur",
    "rm": "Yogesh",
-   "rom": "Shirish Mastud",
-   "sd": "Virendra Rahevar"
+   "sd": "Virendra Rahevar",
+   "rom": "Shirish Mastud"
   },
   {
    "code": "THR0",
    "name": "D Centre Vijaywada",
    "rm": "Bipro",
-   "rom": "Ashlin Moses",
-   "sd": "Narayana"
+   "sd": "Narayana",
+   "rom": "Ashlin Moses"
   },
   {
    "code": "THM0",
    "name": "Ardee Mall, Gurgaon",
    "rm": "Bipro",
-   "rom": "Ajay Gill",
-   "sd": "Paramjeet"
+   "sd": "Paramjeet",
+   "rom": "Ajay Gill"
   },
   {
    "code": "THP5",
    "name": "Sarath City Capital",
    "rm": "Bipro",
-   "rom": "Ashlin Moses",
-   "sd": "Ashlin Moses"
+   "sd": "Ashlin Moses",
+   "rom": "Ashlin Moses"
   },
   {
    "code": "THJ4",
    "name": "Mumbai T2A",
    "rm": "Yogesh",
-   "rom": "Shirish Mastud",
-   "sd": "Nasir Shaikh"
+   "sd": "Nasir Shaikh",
+   "rom": "Shirish Mastud"
   },
   {
    "code": "THP7",
    "name": "Wave mall Jammu",
    "rm": "Bipro",
-   "rom": "Lalit Mohan",
-   "sd": "Lalit Mohan"
+   "sd": "Lalit Mohan",
+   "rom": "Lalit Mohan"
   },
   {
    "code": "THS5",
    "name": "Brigade Orion",
    "rm": "Bipro",
-   "rom": "Ashlin Moses",
-   "sd": "Harnest"
+   "sd": "Harnest",
+   "rom": "Ashlin Moses"
   },
   {
    "code": "THS6",
    "name": "Golden Icon",
    "rm": "Yogesh",
-   "rom": "Shirish Mastud",
-   "sd": "Virendra Rahevar"
+   "sd": "Virendra Rahevar",
+   "rom": "Shirish Mastud"
   },
   {
    "code": "THM8",
    "name": "Mall De Goa",
    "rm": "Yogesh",
-   "rom": "Shirish Mastud",
-   "sd": "Nasir Shaikh"
+   "sd": "Nasir Shaikh",
+   "rom": "Shirish Mastud"
   },
   {
    "code": "THS7",
    "name": "City Centre Mall AS",
    "rm": "Yogesh",
-   "rom": "Chetan",
-   "sd": "Manmohan"
+   "sd": "Manmohan",
+   "rom": "Chetan"
   },
   {
    "code": "THM2",
    "name": "Z Square Kanpur",
    "rm": "Bipro",
-   "rom": "Lalit Mohan",
-   "sd": "Ashish Juyal"
+   "sd": "Ashish Juyal",
+   "rom": "Lalit Mohan"
   },
   {
    "code": "THS8",
    "name": "Gaur Central",
    "rm": "Bipro",
-   "rom": "Lalit Mohan",
-   "sd": "Ashish Juyal"
+   "sd": "Ashish Juyal",
+   "rom": "Lalit Mohan"
   },
   {
    "code": "THN2",
    "name": "NUCLEUSMALL-JH",
    "rm": "Yogesh",
-   "rom": "Chetan",
-   "sd": "Manmohan"
+   "sd": "Manmohan",
+   "rom": "Chetan"
   },
   {
    "code": "TJU3",
    "name": "GSM Mall Hyd",
    "rm": "Bipro",
-   "rom": "Ashlin Moses",
-   "sd": "Narayana"
+   "sd": "Narayana",
+   "rom": "Ashlin Moses"
   },
   {
    "code": "TJU4",
    "name": "DSL Mall Hyd",
    "rm": "Bipro",
-   "rom": "Ashlin Moses",
-   "sd": "Narayana"
+   "sd": "Narayana",
+   "rom": "Ashlin Moses"
   },
   {
    "code": "THN6",
    "name": "Utkal Galleria Bhubaneshwar",
    "rm": "Yogesh",
-   "rom": "Chetan",
-   "sd": "Manmohan"
+   "sd": "Manmohan",
+   "rom": "Chetan"
   },
   {
    "code": "THD9",
    "name": "Infiniti Malad",
    "rm": "Yogesh",
-   "rom": "Shirish Mastud",
-   "sd": "Almas"
+   "sd": "Almas",
+   "rom": "Shirish Mastud"
   },
   {
    "code": "THR3",
    "name": "South City Mall",
    "rm": "Yogesh",
-   "rom": "Chetan",
-   "sd": "Manmohan"
+   "sd": "Manmohan",
+   "rom": "Chetan"
   },
   {
    "code": "TJY4",
    "name": "Airia mall",
    "rm": "Bipro",
-   "rom": "Ajay Gill",
-   "sd": "Paramjeet"
+   "sd": "Paramjeet",
+   "rom": "Ajay Gill"
   },
   {
    "code": "TJU6",
    "name": "Palassio Lucknow",
    "rm": "Bipro",
-   "rom": "Lalit Mohan",
-   "sd": "Ashish Juyal"
+   "sd": "Ashish Juyal",
+   "rom": "Lalit Mohan"
   },
   {
    "code": "TLX5",
    "name": "Vegas dwarka",
    "rm": "Bipro",
-   "rom": "Ajay Gill",
-   "sd": "Harsh Sharma"
+   "sd": "Harsh Sharma",
+   "rom": "Ajay Gill"
   },
   {
    "code": "TPV5",
    "name": "Bangalore Departure",
    "rm": "Bipro",
-   "rom": "Ashlin Moses",
-   "sd": "Umesh"
+   "sd": "Umesh",
+   "rom": "Ashlin Moses"
   },
   {
    "code": "TXPH",
    "name": "Ambala",
    "rm": "Bipro",
-   "rom": "Ajay Gill",
-   "sd": "Harsh Sharma"
+   "sd": "Harsh Sharma",
+   "rom": "Ajay Gill"
   },
   {
    "code": "TWR1",
    "name": "Vizag",
    "rm": "Bipro",
-   "rom": "Ashlin Moses",
-   "sd": "Narayana"
+   "sd": "Narayana",
+   "rom": "Ashlin Moses"
   },
   {
    "code": "TXGB",
    "name": "HSR",
    "rm": "Bipro",
-   "rom": "Ashlin Moses",
-   "sd": "Umesh"
+   "sd": "Umesh",
+   "rom": "Ashlin Moses"
   },
   {
    "code": "TY4T",
    "name": "JWD",
    "rm": "Yogesh",
-   "rom": "Shirish Mastud",
-   "sd": "Sudhir"
+   "sd": "Sudhir",
+   "rom": "Shirish Mastud"
   },
   {
    "code": "TXUT",
    "name": "VAISHALI",
    "rm": "Bipro",
-   "rom": "Ajay Gill",
-   "sd": "Ajay Gill"
+   "sd": "Ajay Gill",
+   "rom": "Ajay Gill"
   },
   {
    "code": "TMA0",
    "name": "H N Hospital",
    "rm": "Yogesh",
-   "rom": "Shirish Mastud",
-   "sd": "Almas"
+   "sd": "Almas",
+   "rom": "Shirish Mastud"
   },
   {
    "code": "TXYT",
    "name": "Good Earth",
    "rm": "Bipro",
-   "rom": "Ajay Gill",
-   "sd": "Paramjeet"
+   "sd": "Paramjeet",
+   "rom": "Ajay Gill"
   },
   {
    "code": "TXSG",
    "name": "Indiranagar",
    "rm": "Bipro",
-   "rom": "Ashlin Moses",
-   "sd": "Harnest"
+   "sd": "Harnest",
+   "rom": "Ashlin Moses"
   },
   {
    "code": "TZ8A",
    "name": "Dehradun",
    "rm": "Bipro",
-   "rom": "Lalit Mohan",
-   "sd": "Ashish Juyal"
+   "sd": "Ashish Juyal",
+   "rom": "Lalit Mohan"
   },
   {
    "code": "TXSI",
    "name": "HYD BANJARA HILLS",
    "rm": "Bipro",
-   "rom": "Ashlin Moses",
-   "sd": "Ashlin Moses"
+   "sd": "Ashlin Moses",
+   "rom": "Ashlin Moses"
   },
   {
    "code": "TUW4",
    "name": "Gokulam",
    "rm": "Yogesh",
-   "rom": "Divya Lakshmi",
-   "sd": "Sarath"
+   "sd": "Sarath",
+   "rom": "Divya Lakshmi"
   },
   {
    "code": "TY7V",
    "name": "Hilite",
    "rm": "Yogesh",
-   "rom": "Divya Lakshmi",
-   "sd": "Sarath"
+   "sd": "Sarath",
+   "rom": "Divya Lakshmi"
   },
   {
    "code": "TZ8Z",
    "name": "Vega City",
    "rm": "Bipro",
-   "rom": "Ashlin Moses",
-   "sd": "Umesh"
+   "sd": "Umesh",
+   "rom": "Ashlin Moses"
   },
   {
    "code": "TASG",
    "name": "Delhi Airport T1A",
    "rm": "Bipro",
-   "rom": "Lalit Mohan",
-   "sd": "Khubaib"
+   "sd": "Khubaib",
+   "rom": "Lalit Mohan"
   },
   {
    "code": "TAUN",
    "name": "Udhaipur Celebration",
    "rm": "Bipro",
-   "rom": "Ajay Gill",
-   "sd": "Ajay Gill"
+   "sd": "Ajay Gill",
+   "rom": "Ajay Gill"
   },
   {
    "code": "T42A",
    "name": "Lulu Trivandrum",
    "rm": "Yogesh",
-   "rom": "Divya Lakshmi",
-   "sd": "Sarath"
+   "sd": "Sarath",
+   "rom": "Divya Lakshmi"
   },
   {
    "code": "TXR2",
    "name": "Zirakpur",
    "rm": "Bipro",
-   "rom": "Ajay Gill",
-   "sd": "Harsh Sharma"
+   "sd": "Harsh Sharma",
+   "rom": "Ajay Gill"
   },
   {
    "code": "T34O",
    "name": "Citadel",
    "rm": "Yogesh",
-   "rom": "Chetan",
-   "sd": "Chetan"
+   "sd": "Chetan",
+   "rom": "Chetan"
   },
   {
    "code": "T42C",
    "name": "Goa Airport",
    "rm": "Yogesh",
-   "rom": "Shirish Mastud",
-   "sd": "Nasir Shaikh"
+   "sd": "Nasir Shaikh",
+   "rom": "Shirish Mastud"
   },
   {
    "code": "T38E",
    "name": "Lulu Lko",
    "rm": "Bipro",
-   "rom": "Lalit Mohan",
-   "sd": "Ashish Juyal"
+   "sd": "Ashish Juyal",
+   "rom": "Lalit Mohan"
   },
   {
    "code": "T36H",
    "name": "Falcon City Bangalore",
    "rm": "Bipro",
-   "rom": "Ashlin Moses",
-   "sd": "Umesh"
+   "sd": "Umesh",
+   "rom": "Ashlin Moses"
   },
   {
    "code": "TLY7",
    "name": "JWD Play",
    "rm": "Yogesh",
-   "rom": "Shirish Mastud",
-   "sd": "Sudhir"
+   "sd": "Sudhir",
+   "rom": "Shirish Mastud"
   },
   {
    "code": "T61F",
    "name": "PMC CHENNAI Play",
    "rm": "Yogesh",
-   "rom": "Divya Lakshmi",
-   "sd": "Damodharan"
+   "sd": "Damodharan",
+   "rom": "Divya Lakshmi"
   },
   {
    "code": "TAHY",
    "name": "WMG Play",
    "rm": "Bipro",
-   "rom": "Ajay Gill",
-   "sd": "Paramjeet"
+   "sd": "Paramjeet",
+   "rom": "Ajay Gill"
   },
   {
    "code": "T77X",
    "name": "Palladium Ahmedabad",
    "rm": "Yogesh",
-   "rom": "Shirish Mastud",
-   "sd": "Virendra Rahevar"
+   "sd": "Virendra Rahevar",
+   "rom": "Shirish Mastud"
   },
   {
    "code": "T26L",
    "name": "Kopa Pune",
    "rm": "Yogesh",
-   "rom": "Chetan",
-   "sd": "Subodh"
+   "sd": "Subodh",
+   "rom": "Chetan"
   },
   {
    "code": "T36O",
    "name": "Bangalore Airport T2",
    "rm": "Bipro",
-   "rom": "Ashlin Moses",
-   "sd": "Umesh"
+   "sd": "Umesh",
+   "rom": "Ashlin Moses"
   },
   {
    "code": "T2DD",
    "name": "CP67",
    "rm": "Bipro",
-   "rom": "Ajay Gill",
-   "sd": "Ajay Gill"
+   "sd": "Ajay Gill",
+   "rom": "Ajay Gill"
   },
   {
    "code": "T2DE",
    "name": "Lucknow Airport Departure",
    "rm": "Bipro",
-   "rom": "Lalit Mohan",
-   "sd": "Khubaib"
+   "sd": "Khubaib",
+   "rom": "Lalit Mohan"
   },
   {
    "code": "T2DK",
    "name": "Lucknow Airport Arrival",
    "rm": "Bipro",
-   "rom": "Lalit Mohan",
-   "sd": "Khubaib"
+   "sd": "Khubaib",
+   "rom": "Lalit Mohan"
   },
   {
    "code": "T2MI",
    "name": "MALL OF ASIA",
    "rm": "Bipro",
-   "rom": "Ashlin Moses",
-   "sd": "Umesh"
+   "sd": "Umesh",
+   "rom": "Ashlin Moses"
   },
   {
    "code": "T5PF",
    "name": "Ahmd T1A",
    "rm": "Yogesh",
-   "rom": "Shirish Mastud",
-   "sd": "Virendra Rahevar"
+   "sd": "Virendra Rahevar",
+   "rom": "Shirish Mastud"
   },
   {
    "code": "T2WF",
    "name": "Forum Kochi",
    "rm": "Yogesh",
-   "rom": "Divya Lakshmi",
-   "sd": "Sarath"
+   "sd": "Sarath",
+   "rom": "Divya Lakshmi"
   },
   {
    "code": "T6AA",
    "name": "PROZONE",
    "rm": "Yogesh",
-   "rom": "Chetan",
-   "sd": "Subodh"
+   "sd": "Subodh",
+   "rom": "Chetan"
   },
   {
    "code": "T2UO",
    "name": "Wakad PUNE MOM",
    "rm": "Yogesh",
-   "rom": "Chetan",
-   "sd": "Subodh"
+   "sd": "Subodh",
+   "rom": "Chetan"
   },
   {
    "code": "T7UJ",
    "name": "Chennai T1A",
    "rm": "Yogesh",
-   "rom": "Divya Lakshmi",
-   "sd": "Damodharan"
+   "sd": "Damodharan",
+   "rom": "Divya Lakshmi"
   },
   {
    "code": "T0ZV",
    "name": "Delhi T1D",
    "rm": "Bipro",
-   "rom": "Lalit Mohan",
-   "sd": "Khubaib"
+   "sd": "Khubaib",
+   "rom": "Lalit Mohan"
   },
   {
    "code": "T3AA",
    "name": "Rajkot",
    "rm": "Yogesh",
-   "rom": "Shirish Mastud",
-   "sd": "Virendra Rahevar"
+   "sd": "Virendra Rahevar",
+   "rom": "Shirish Mastud"
   },
   {
    "code": "TB2N",
    "name": "Palladium, Mumbai (Relocation)",
    "rm": "Yogesh",
-   "rom": "Shirish Mastud",
-   "sd": "Almas"
+   "sd": "Almas",
+   "rom": "Shirish Mastud"
   },
   {
    "code": "THG9",
    "name": "DB City Bhopal",
    "rm": "Yogesh",
-   "rom": "Shirish Mastud",
-   "sd": "Virendra Rahevar"
+   "sd": "Virendra Rahevar",
+   "rom": "Shirish Mastud"
   },
   {
    "code": "T7ZN",
    "name": "R City Ghatkopar",
    "rm": "Yogesh",
-   "rom": "Shirish Mastud",
-   "sd": "Sudhir"
+   "sd": "Sudhir",
+   "rom": "Shirish Mastud"
   },
   {
    "code": "TB2O",
    "name": "Rise-2, Palladium",
    "rm": "Yogesh",
-   "rom": "Shirish Mastud",
-   "sd": "Almas"
+   "sd": "Almas",
+   "rom": "Shirish Mastud"
   },
   {
    "code": "T8LI",
    "name": "PMCK Kurla",
    "rm": "Yogesh",
-   "rom": "Shirish Mastud",
-   "sd": "Almas"
+   "sd": "Almas",
+   "rom": "Shirish Mastud"
   },
   {
    "code": "TF5T",
    "name": "Hamleys Pacific D21",
    "rm": "Bipro",
-   "rom": "Ajay Gill",
-   "sd": "Khubaib"
+   "sd": "Khubaib",
+   "rom": "Ajay Gill"
   },
   {
    "code": "TL6O",
    "name": "Hamleys IRIS(TASD)",
    "rm": "Bipro",
-   "rom": "Ajay Gill",
-   "sd": "Paramjeet"
+   "sd": "Paramjeet",
+   "rom": "Ajay Gill"
   },
   {
    "code": "TK0G",
    "name": "Rowan garuda( T9MV",
    "rm": "Bipro",
-   "rom": "Ashlin Moses",
-   "sd": "Harnest"
+   "sd": "Harnest",
+   "rom": "Ashlin Moses"
   },
   {
    "code": "TL6C",
    "name": "Rowan Marina Mall- T4IS",
    "rm": "Yogesh",
-   "rom": "Divya Lakshmi",
-   "sd": "Damodharan"
+   "sd": "Damodharan",
+   "rom": "Divya Lakshmi"
   },
   {
    "code": "TL6N",
    "name": "Rowan Jamnagar",
    "rm": "Yogesh",
-   "rom": "Shirish Mastud",
-   "sd": "Virendra Rahevar"
+   "sd": "Virendra Rahevar",
+   "rom": "Shirish Mastud"
   },
   {
    "code": "THE4",
    "name": "PMC Pune",
    "rm": "Yogesh",
-   "rom": "Chetan",
-   "sd": "Subodh"
+   "sd": "Subodh",
+   "rom": "Chetan"
   },
   {
    "code": "THE8",
    "name": "AVK Delhi",
    "rm": "Bipro",
-   "rom": "Ajay Gill",
-   "sd": "Ajay Gill"
+   "sd": "Ajay Gill",
+   "rom": "Ajay Gill"
   },
   {
    "code": "TB6V",
    "name": "Unity Elegante",
    "rm": "Bipro",
-   "rom": "Ajay Gill",
-   "sd": "Harsh Sharma"
+   "sd": "Harsh Sharma",
+   "rom": "Ajay Gill"
   },
   {
    "code": "TF5Y",
    "name": "Oberoi Borivali",
    "rm": "Yogesh",
-   "rom": "Shirish Mastud",
-   "sd": "Sudhir"
+   "sd": "Sudhir",
+   "rom": "Shirish Mastud"
   },
   {
    "code": "TL9A",
    "name": "Lullu Bangalore",
    "rm": "Bipro",
-   "rom": "Ashlin Moses",
-   "sd": "Umesh"
+   "sd": "Umesh",
+   "rom": "Ashlin Moses"
   },
   {
    "code": "TBIM",
    "name": "Zora Mall",
    "rm": "Yogesh",
-   "rom": "Shirish Mastud",
-   "sd": "Virendra Rahevar"
+   "sd": "Virendra Rahevar",
+   "rom": "Shirish Mastud"
   },
   {
    "code": "TBAV",
    "name": "LAKESHORE",
    "rm": "Bipro",
-   "rom": "Ashlin Moses",
-   "sd": "Narayana"
+   "sd": "Narayana",
+   "rom": "Ashlin Moses"
   },
   {
    "code": "TM1F",
    "name": "Model Town Jalandhar",
    "rm": "Bipro",
-   "rom": "Lalit Mohan",
-   "sd": "Lalit Mohan"
+   "sd": "Lalit Mohan",
+   "rom": "Lalit Mohan"
   },
   {
    "code": "TM1H",
    "name": "Pacific Faridabad",
    "rm": "Bipro",
-   "rom": "Ajay Gill",
-   "sd": "Paramjeet"
+   "sd": "Paramjeet",
+   "rom": "Ajay Gill"
   },
   {
    "code": "TBC7",
    "name": "Creekside Doraha",
    "rm": "Bipro",
-   "rom": "Lalit Mohan",
-   "sd": "Lalit Mohan"
+   "sd": "Lalit Mohan",
+   "rom": "Lalit Mohan"
   }
  ]
 }
