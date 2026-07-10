@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Hamleys Global Count Dashboard</title>
+<meta name="description" content="Hamleys India — Global Count Executive Dashboard" />
+<link rel="icon" href="assets/logo.png" />
+
+<!-- Chart.js (CDN) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<!-- Chart.js date adapter (for time based axes, optional use) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.30.1/moment.min.js"></script>
+<!-- SheetJS (Excel export in Raw Data tab) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<!-- ===================== LOADING OVERLAY ===================== -->
+<div class="loader-overlay" id="loaderOverlay">
+  <img src="assets/logo.png" alt="Hamleys" />
+  <div class="spinner"></div>
+  <div class="loader-text">Loading Global Count data…</div>
+</div>
+
+<!-- ===================== HEADER ===================== -->
+<header class="app-header">
+  <div class="header-left">
+    <img src="assets/logo.png" alt="Hamleys Logo" class="brand-logo" />
+    <div class="brand-text">
+      <span class="brand-title">Hamleys Global Count Dashboard</span>
+      <span class="brand-sub" id="storeCountSub">India Retail Operations</span>
+    </div>
+  </div>
+  <div class="header-right">
+    <span class="last-updated-chip" id="lastUpdatedChip">
+      <span class="status-dot on"></span> Last Updated: <strong id="lastUpdatedText">—</strong>
+    </span>
+    <button class="header-btn" id="refreshBtn" title="Reload data/gc-data.json">⟳ Refresh</button>
+    <button class="header-btn gold" onclick="window.location.href='admin.html'">⚙ Admin</button>
+    <button class="icon-btn" id="themeToggle" title="Toggle Dark / Light Mode">🌙</button>
+  </div>
+</header>
+
+<div class="app-body">
+  <main class="main-content">
+
+    <!-- ===================== KPI CARDS ===================== -->
+    <section class="kpi-grid" id="kpiGrid">
+      <!-- populated by app.js -->
+    </section>
+
+    <!-- ===================== FILTERS ===================== -->
+    <section class="filters-bar" id="filtersBar">
+      <div class="filter-group">
+        <label>Date</label>
+        <select id="fDate"><option value="">All Dates</option></select>
+      </div>
+      <div class="filter-group">
+        <label>Month</label>
+        <select id="fMonth"><option value="">All Months</option></select>
+      </div>
+      <div class="filter-group">
+        <label>Year</label>
+        <select id="fYear"><option value="">All Years</option></select>
+      </div>
+      <div class="filter-group">
+        <label>RM</label>
+        <select id="fRM"><option value="">All RM</option></select>
+      </div>
+      <div class="filter-group">
+        <label>ROM</label>
+        <select id="fROM"><option value="">All ROM</option></select>
+      </div>
+      <div class="filter-group">
+        <label>SD</label>
+        <select id="fSD"><option value="">All SD</option></select>
+      </div>
+      <div class="filter-group">
+        <label>Region</label>
+        <select id="fRegion"><option value="">All Regions</option></select>
+      </div>
+      <div class="filter-group" style="min-width:200px;">
+        <label>Search Store</label>
+        <input type="text" id="fSearch" placeholder="Store code or name…" />
+      </div>
+      <div class="filter-actions">
+        <button class="btn btn-outline btn-sm" id="resetFiltersBtn">✕ Reset Filters</button>
+      </div>
+    </section>
+
+    <!-- ===================== TABS NAV ===================== -->
+    <nav class="tabs-nav" id="tabsNav">
+      <button class="tab-btn active" data-tab="overview">📊 Overview</button>
+      <button class="tab-btn" data-tab="rm">🧑‍💼 RM Summary</button>
+      <button class="tab-btn" data-tab="rom">🧑‍💻 ROM Summary</button>
+      <button class="tab-btn" data-tab="sd">🧑‍🔧 SD Summary</button>
+      <button class="tab-btn" data-tab="store">🏬 Store Summary</button>
+      <button class="tab-btn" data-tab="daily">📅 Daily Trends</button>
+      <button class="tab-btn" data-tab="monthly">🗓️ Monthly Trends</button>
+      <button class="tab-btn" data-tab="raw">📋 Raw Data</button>
+    </nav>
+
+    <!-- ===================== OVERVIEW TAB ===================== -->
+    <section class="tab-panel active" id="tab-overview">
+      <div class="grid-2">
+        <div class="panel">
+          <div class="panel-title"><span class="title-text"><span class="accent-bar"></span>Daily Global Count Trend</span>
+            <button class="btn btn-outline btn-sm" data-download-chart="dailyTrendChart">⬇ PNG</button>
+          </div>
+          <div class="chart-wrap"><canvas id="dailyTrendChart"></canvas></div>
+        </div>
+        <div class="panel">
+          <div class="panel-title"><span class="title-text"><span class="accent-bar"></span>Monthly Global Count Trend</span>
+            <button class="btn btn-outline btn-sm" data-download-chart="monthlyTrendChart">⬇ PNG</button>
+          </div>
+          <div class="chart-wrap"><canvas id="monthlyTrendChart"></canvas></div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="panel">
+          <div class="panel-title"><span class="title-text"><span class="accent-bar"></span>Top 10 Stores</span>
+            <button class="btn btn-outline btn-sm" data-download-chart="top10Chart">⬇ PNG</button>
+          </div>
+          <div class="chart-wrap"><canvas id="top10Chart"></canvas></div>
+        </div>
+        <div class="panel">
+          <div class="panel-title"><span class="title-text"><span class="accent-bar"></span>Bottom 10 Stores</span>
+            <button class="btn btn-outline btn-sm" data-download-chart="bottom10Chart">⬇ PNG</button>
+          </div>
+          <div class="chart-wrap"><canvas id="bottom10Chart"></canvas></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title"><span class="title-text"><span class="accent-bar"></span>Best Performers &amp; Extremes</span></div>
+        <div class="kpi-grid" id="overviewBestGrid"></div>
+      </div>
+    </section>
+
+    <!-- ===================== RM TAB ===================== -->
+    <section class="tab-panel" id="tab-rm">
+      <div class="panel">
+        <div class="panel-title"><span class="title-text"><span class="accent-bar"></span>RM Performance Table</span></div>
+        <div class="table-scroll"><table class="data-table" id="rmTable">
+          <thead><tr>
+            <th data-key="rm">RM</th><th data-key="stores">Stores</th><th data-key="totalGC">Total GC</th>
+            <th data-key="avgGC">Average GC</th><th data-key="highest">Highest</th><th data-key="lowest">Lowest</th>
+            <th data-key="completion">Completion %</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table></div>
+      </div>
+      <div class="grid-2">
+        <div class="panel">
+          <div class="panel-title"><span class="title-text"><span class="accent-bar"></span>RM — Total GC (Bar)</span>
+            <button class="btn btn-outline btn-sm" data-download-chart="rmBarChart">⬇ PNG</button></div>
+          <div class="chart-wrap"><canvas id="rmBarChart"></canvas></div>
+        </div>
+        <div class="panel">
+          <div class="panel-title"><span class="title-text"><span class="accent-bar"></span>RM — Trend (Line)</span>
+            <button class="btn btn-outline btn-sm" data-download-chart="rmLineChart">⬇ PNG</button></div>
+          <div class="chart-wrap"><canvas id="rmLineChart"></canvas></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== ROM TAB ===================== -->
+    <section class="tab-panel" id="tab-rom">
+      <div class="panel">
+        <div class="panel-title"><span class="title-text"><span class="accent-bar"></span>ROM Performance Table</span></div>
+        <div class="table-scroll"><table class="data-table" id="romTable">
+          <thead><tr>
+            <th data-key="rom">ROM</th><th data-key="stores">Stores</th><th data-key="totalGC">GC</th>
+            <th data-key="avgGC">Average</th><th data-key="highest">Highest</th><th data-key="lowest">Lowest</th>
+            <th data-key="completion">Completion %</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table></div>
+      </div>
+      <div class="grid-3">
+        <div class="panel">
+          <div class="panel-title"><span class="title-text"><span class="accent-bar"></span>Bar</span>
+            <button class="btn btn-outline btn-sm" data-download-chart="romBarChart">⬇ PNG</button></div>
+          <div class="chart-wrap"><canvas id="romBarChart"></canvas></div>
+        </div>
+        <div class="panel">
+          <div class="panel-title"><span class="title-text"><span class="accent-bar"></span>Pie</span>
+            <button class="btn btn-outline btn-sm" data-download-chart="romPieChart">⬇ PNG</button></div>
+          <div class="chart-wrap"><canvas id="romPieChart"></canvas></div>
+        </div>
+        <div class="panel">
+          <div class="panel-title"><span class="title-text"><span class="accent-bar"></span>Trend</span>
+            <button class="btn btn-outline btn-sm" data-download-chart="romTrendChart">⬇ PNG</button></div>
+          <div class="chart-wrap"><canvas id="romTrendChart"></canvas></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== SD TAB ===================== -->
+    <section class="tab-panel" id="tab-sd">
+      <div class="panel">
+        <div class="panel-title"><span class="title-text"><span class="accent-bar"></span>SD Performance Table</span></div>
+        <div class="table-scroll"><table class="data-table" id="sdTable">
+          <thead><tr>
+            <th data-key="sd">SD</th><th data-key="stores">Store Count</th><th data-key="totalGC">GC</th>
+            <th data-key="avgGC">Average</th><th data-key="highest">Highest</th><th data-key="lowest">Lowest</th>
+            <th data-key="completion">Completion %</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table></div>
+      </div>
+      <div class="grid-2">
+        <div class="panel">
+          <div class="panel-title"><span class="title-text"><span class="accent-bar"></span>Bar</span>
+            <button class="btn btn-outline btn-sm" data-download-chart="sdBarChart">⬇ PNG</button></div>
+          <div class="chart-wrap"><canvas id="sdBarChart"></canvas></div>
+        </div>
+        <div class="panel">
+          <div class="panel-title"><span class="title-text"><span class="accent-bar"></span>Trend</span>
+            <button class="btn btn-outline btn-sm" data-download-chart="sdTrendChart">⬇ PNG</button></div>
+          <div class="chart-wrap"><canvas id="sdTrendChart"></canvas></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== STORE TAB ===================== -->
+    <section class="tab-panel" id="tab-store">
+      <div class="panel">
+        <div class="table-toolbar">
+          <div class="table-search"><input type="text" id="storeSearchInput" placeholder="Search store, RM, ROM, SD…" /></div>
+          <button class="btn btn-outline btn-sm" id="storeExportBtn">⬇ Export Excel</button>
+        </div>
+        <div class="table-scroll"><table class="data-table" id="storeTable">
+          <thead><tr>
+            <th data-key="rank">Rank</th><th data-key="store">Store</th><th data-key="rm">RM</th><th data-key="rom">ROM</th>
+            <th data-key="sd">SD</th><th data-key="lastDate">Last Date</th><th data-key="month">Month</th>
+            <th data-key="gc">Global Count</th><th data-key="trend">Trend</th><th data-key="status">Status</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table></div>
+        <div class="pagination" id="storePagination"></div>
+      </div>
+    </section>
+
+    <!-- ===================== DAILY TRENDS TAB ===================== -->
+    <section class="tab-panel" id="tab-daily">
+      <div class="grid-2">
+        <div class="panel">
+          <div class="panel-title"><span class="title-text"><span class="accent-bar"></span>Date-wise Global Count</span>
+            <button class="btn btn-outline btn-sm" data-download-chart="dailyTrendChart2">⬇ PNG</button></div>
+          <div class="chart-wrap tall"><canvas id="dailyTrendChart2"></canvas></div>
+        </div>
+        <div class="panel">
+          <div class="panel-title"><span class="title-text"><span class="accent-bar"></span>Daily Comparison (Area)</span>
+            <button class="btn btn-outline btn-sm" data-download-chart="dailyComparisonChart">⬇ PNG</button></div>
+          <div class="chart-wrap tall"><canvas id="dailyComparisonChart"></canvas></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-title"><span class="title-text"><span class="accent-bar"></span>Store Upload Heat Map (by Date)</span></div>
+        <div id="heatMapWrap" style="overflow-x:auto;"></div>
+      </div>
+    </section>
+
+    <!-- ===================== MONTHLY TRENDS TAB ===================== -->
+    <section class="tab-panel" id="tab-monthly">
+      <div class="grid-2">
+        <div class="panel">
+          <div class="panel-title"><span class="title-text"><span class="accent-bar"></span>Month-wise Global Count</span>
+            <button class="btn btn-outline btn-sm" data-download-chart="monthlyTrendChart2">⬇ PNG</button></div>
+          <div class="chart-wrap tall"><canvas id="monthlyTrendChart2"></canvas></div>
+        </div>
+        <div class="panel">
+          <div class="panel-title"><span class="title-text"><span class="accent-bar"></span>Monthly Comparison</span>
+            <button class="btn btn-outline btn-sm" data-download-chart="monthlyComparisonChart">⬇ PNG</button></div>
+          <div class="chart-wrap tall"><canvas id="monthlyComparisonChart"></canvas></div>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="panel">
+          <div class="panel-title"><span class="title-text"><span class="accent-bar"></span>7-Day Rolling Average</span>
+            <button class="btn btn-outline btn-sm" data-download-chart="rollingAvgChart">⬇ PNG</button></div>
+          <div class="chart-wrap"><canvas id="rollingAvgChart"></canvas></div>
+        </div>
+        <div class="panel">
+          <div class="panel-title"><span class="title-text"><span class="accent-bar"></span>Day-over-Day Growth %</span>
+            <button class="btn btn-outline btn-sm" data-download-chart="growthChart"></button></div>
+          <div class="chart-wrap"><canvas id="growthChart"></canvas></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== RAW DATA TAB ===================== -->
+    <section class="tab-panel" id="tab-raw">
+      <div class="panel">
+        <div class="table-toolbar">
+          <div class="table-search"><input type="text" id="rawSearchInput" placeholder="Search all columns…" /></div>
+          <button class="btn btn-outline btn-sm" id="rawExportExcelBtn">⬇ Export Excel</button>
+          <button class="btn btn-outline btn-sm" id="rawExportCsvBtn">⬇ Export CSV</button>
+          <button class="btn btn-outline btn-sm" id="rawPrintBtn">🖨 Print</button>
+        </div>
+        <div class="table-scroll"><table class="data-table" id="rawDataTable">
+          <thead><tr id="rawDataHeadRow"></tr></thead>
+          <tbody></tbody>
+        </table></div>
+        <div class="pagination" id="rawDataPagination"></div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<footer class="app-footer">
+  Hamleys Global Count Dashboard &copy; <span id="footerYear"></span> — Data refreshed via Admin Generator · Fully client-side · Built for GitHub Pages
+</footer>
+
+<script src="js/charts.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

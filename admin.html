@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Admin Generator — Hamleys Global Count Dashboard</title>
+<link rel="icon" href="assets/logo.png" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<header class="app-header">
+  <div class="header-left">
+    <img src="assets/logo.png" alt="Hamleys Logo" class="brand-logo" />
+    <div class="brand-text">
+      <span class="brand-title">Admin Generator</span>
+      <span class="brand-sub">Global Count — Excel → JSON</span>
+    </div>
+  </div>
+  <div class="header-right">
+    <button class="header-btn" onclick="window.location.href='index.html'">← Back to Dashboard</button>
+    <button class="icon-btn" id="themeToggle" title="Toggle Dark / Light Mode">🌙</button>
+  </div>
+</header>
+
+<div class="admin-shell">
+
+  <!-- ===================== STEP 1: DAILY GC UPLOAD ===================== -->
+  <div class="panel">
+    <div class="panel-title"><span class="title-text"><span class="accent-bar"></span>1. Upload Daily Global Count Excel</span></div>
+    <p class="text-muted" style="margin-top:-6px;">Drop today's Global Count workbook. The first sheet's first row is used as headers — all columns are preserved automatically, nothing is hardcoded.</p>
+
+    <div class="dropzone" id="gcDropzone">
+      <div class="dz-icon">📊</div>
+      <h3>Drag &amp; drop Excel file here</h3>
+      <p>or click to browse (.xlsx, .xls, .csv)</p>
+      <button class="btn btn-primary" type="button" id="browseBtn">Browse File</button>
+      <input type="file" id="gcFileInput" accept=".xlsx,.xls,.csv" class="hidden" />
+    </div>
+
+    <div class="progress-bar-track hidden" id="progressTrack">
+      <div class="progress-bar-fill" id="progressFill"></div>
+    </div>
+
+    <div class="step-list hidden" id="stepList">
+      <div class="step-item" data-step="read"><span class="step-dot">1</span><span class="step-label">Reading Excel file</span><span class="step-msg"></span></div>
+      <div class="step-item" data-step="parse"><span class="step-dot">2</span><span class="step-label">Converting sheet to JSON</span><span class="step-msg"></span></div>
+      <div class="step-item" data-step="validate"><span class="step-dot">3</span><span class="step-label">Validating required columns</span><span class="step-msg"></span></div>
+      <div class="step-item" data-step="map"><span class="step-dot">4</span><span class="step-label">Mapping Store → RM / ROM / SD</span><span class="step-msg"></span></div>
+      <div class="step-item" data-step="build"><span class="step-dot">5</span><span class="step-label">Building gc-data.json</span><span class="step-msg"></span></div>
+    </div>
+
+    <div id="alertsArea"></div>
+
+    <div class="mapping-stats hidden" id="mappingStats"></div>
+
+    <div class="admin-actions hidden" id="resultActions">
+      <button class="btn btn-primary" id="downloadJsonBtn">⬇ Download Updated gc-data.json</button>
+      <button class="btn btn-outline" id="previewJsonBtn">👁 Preview JSON</button>
+      <button class="btn btn-outline" id="publishGithubBtn">☁ Auto-Publish to GitHub</button>
+    </div>
+
+    <div class="preview-table-wrap hidden" id="previewWrap">
+      <div class="panel-title" style="margin-top:14px;"><span class="title-text"><span class="accent-bar"></span>Preview (first 15 rows)</span></div>
+      <div class="table-scroll"><table class="data-table" id="previewTable"><thead><tr id="previewHead"></tr></thead><tbody id="previewBody"></tbody></table></div>
+    </div>
+  </div>
+
+  <!-- ===================== STEP 2: GITHUB AUTO-PUBLISH (OPTIONAL) ===================== -->
+  <div class="panel">
+    <div class="panel-title"><span class="title-text"><span class="accent-bar"></span>2. GitHub Auto-Publish (Optional)</span></div>
+    <p class="text-muted" style="margin-top:-6px;">To skip manual re-uploading, Claude can commit <code>data/gc-data.json</code> directly to your repo using a GitHub Personal Access Token (fine-grained, "Contents: Read & Write" only). The token is stored solely in your browser's local storage and is never sent anywhere except GitHub's API.</p>
+    <div class="token-box">
+      <input type="text" id="ghOwner" placeholder="GitHub username / organization (e.g. hamleys-india)" />
+      <input type="text" id="ghRepo" placeholder="Repository name (e.g. Hamleys-GC-Dashboard)" />
+      <input type="text" id="ghBranch" placeholder="Branch (default: main)" />
+      <input type="password" id="ghToken" placeholder="Personal Access Token" />
+      <button class="btn btn-outline btn-sm" id="ghSaveBtn" style="width:fit-content;">💾 Save Settings Locally</button>
+      <span class="small-note">Settings save in this browser only. Use "Auto-Publish to GitHub" above after generating JSON.</span>
+    </div>
+  </div>
+
+  <!-- ===================== STEP 3: STORE MAPPING REFERENCE ===================== -->
+  <div class="panel">
+    <div class="panel-title"><span class="title-text"><span class="accent-bar"></span>3. Update Store ↔ SD / ROM / RM Mapping (Optional)</span></div>
+    <p class="text-muted" style="margin-top:-6px;">Only needed when new stores open or a mapping changes. Upload the "SD ROM Store Mapping" workbook to refresh <code>data/store-mapping.json</code>, which the dashboard and this generator use to auto-fill RM/ROM/SD for every store.</p>
+    <div class="dropzone" id="mapDropzone" style="padding:30px 20px;">
+      <div class="dz-icon">🗺️</div>
+      <h3>Drag &amp; drop Mapping Excel here</h3>
+      <p>Columns expected: Store Code, Name, RM, SD, ROM (order flexible)</p>
+      <button class="btn btn-outline" type="button" id="mapBrowseBtn">Browse File</button>
+      <input type="file" id="mapFileInput" accept=".xlsx,.xls,.csv" class="hidden" />
+    </div>
+    <div id="mapAlertsArea"></div>
+    <div class="admin-actions hidden" id="mapResultActions">
+      <button class="btn btn-primary" id="downloadMapJsonBtn">⬇ Download store-mapping.json</button>
+    </div>
+  </div>
+
+</div>
+
+<footer class="app-footer">Hamleys Global Count Dashboard — Admin Generator · Client-side only, no backend, no database</footer>
+
+<script src="js/excel.js"></script>
+</body>
+</html>
