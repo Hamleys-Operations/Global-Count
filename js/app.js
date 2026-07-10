@@ -19,20 +19,13 @@ const APP = {
   filtered: [],         // records after filters applied
   colIdx: {},           // column-name -> index map (resolved dynamically)
   storePage: 1,
-  storePageSize: 10,
-  storeSort: { key: 'gc', dir: 'desc' },
+  storePageSize: 15,
+  storeSort: { key: 'date', dir: 'desc' },
   rawPage: 1,
   rawPageSize: 15,
   rawSort: { key: null, dir: 'asc' },
   rawFilteredRows: [],
-  charts: {},           // Chart.js instances keyed by canvas id
-};
-
-const REGION_KEYWORDS = {
-  North: ['delhi','gurgaon','gurugram','noida','chandigarh','punjab','jaipur','rajasthan','lucknow','dehradun','amritsar','ludhiana','jalandhar','haryana','shimla','manali','agra','kanpur','faridabad','panipat','karnal','udaipur','jodhpur'],
-  West: ['mumbai','pune','ahmedabad','surat','vadodara','baroda','rajkot','nagpur','nashik','goa','indore','bhopal','gujarat','maharashtra','thane','vapi','navsari','bhavnagar','anand'],
-  South: ['bangalore','bengaluru','chennai','hyderabad','kochi','cochin','coimbatore','trivandrum','kerala','tamil nadu','karnataka','telangana','andhra','mysore','vizag','vijayawada','madurai','trichy','mangalore','calicut','kozhikode','pondicherry'],
-  East: ['kolkata','bhubaneswar','patna','ranchi','guwahati','odisha','bihar','jharkhand','assam','west bengal','siliguri','durgapur','cuttack']
+  storeExportData: [],
 };
 
 /* ---------------------------------------------------------------------- *
@@ -106,14 +99,6 @@ function toLocalISODate(d) {
 function monthLabel(d) {
   if (!d) return '—';
   return d.toLocaleDateString('en-GB', { month: 'short', year: 'numeric', timeZone: 'UTC' });
-}
-
-function computeRegion(storeName) {
-  const s = (storeName || '').toLowerCase();
-  for (const region in REGION_KEYWORDS) {
-    if (REGION_KEYWORDS[region].some(k => s.includes(k))) return region;
-  }
-  return 'Other';
 }
 
 /** Find a column index by fuzzy (case-insensitive, substring) name match */
@@ -236,7 +221,6 @@ function buildRecords() {
       rm: (rm || 'Unassigned').toString().trim(),
       rom: (rom || 'Unassigned').toString().trim(),
       sd: (sd || 'Unassigned').toString().trim(),
-      region: computeRegion(storeName),
       date: dateVal,
       dateStr: dateVal ? toLocalISODate(dateVal) : '',
       month: dateVal ? monthLabel(dateVal) : 'Unknown',
@@ -266,7 +250,6 @@ function populateFilterOptions() {
   const rms = uniqueSorted(APP.records.map(r => r.rm));
   const roms = uniqueSorted(APP.records.map(r => r.rom));
   const sds = uniqueSorted(APP.records.map(r => r.sd));
-  const regions = uniqueSorted(APP.records.map(r => r.region));
 
   // Date is a native calendar picker (<input type="date">), not a dropdown —
   // just bound its min/max to the range actually present in the data.
@@ -281,7 +264,6 @@ function populateFilterOptions() {
   fillSelect('#fRM', rms);
   fillSelect('#fROM', roms);
   fillSelect('#fSD', sds);
-  fillSelect('#fRegion', regions);
 }
 
 function fillSelect(sel, values, labelFn) {
@@ -307,7 +289,6 @@ function getFilterState() {
     rm: $('#fRM').value,
     rom: $('#fROM').value,
     sd: $('#fSD').value,
-    region: $('#fRegion').value,
     search: $('#fSearch').value.trim().toLowerCase(),
   };
 }
@@ -321,7 +302,6 @@ function applyFilters() {
     if (f.rm && r.rm !== f.rm) return false;
     if (f.rom && r.rom !== f.rom) return false;
     if (f.sd && r.sd !== f.sd) return false;
-    if (f.region && r.region !== f.region) return false;
     if (f.search && !(`${r.storeCode} ${r.storeName}`.toLowerCase().includes(f.search))) return false;
     return true;
   });
@@ -330,7 +310,7 @@ function applyFilters() {
 }
 
 function resetFilters() {
-  ['#fDate', '#fMonth', '#fYear', '#fRM', '#fROM', '#fSD', '#fRegion'].forEach(s => $(s).value = '');
+  ['#fDate', '#fMonth', '#fYear', '#fRM', '#fROM', '#fSD'].forEach(s => $(s).value = '');
   $('#fSearch').value = '';
   applyFilters();
 }
@@ -348,9 +328,11 @@ function aggregateBy(records, keyFn, masterCountFn) {
     const avg = gcs.length ? total / gcs.length : 0;
     const highest = gcs.length ? Math.max(...gcs) : 0;
     const lowest = gcs.length ? Math.min(...gcs) : 0;
+    const netQtyDiff = items.reduce((a, i) => a + (i.netQtyDiff || 0), 0);
+    const netValueDiff = items.reduce((a, i) => a + (i.netValueDiff || 0), 0);
     const masterTotal = masterCountFn ? masterCountFn(key) : stores.size;
     const completion = masterTotal ? (stores.size / masterTotal) * 100 : 0;
-    out.push({ key, stores: stores.size, total, avg, highest, lowest, completion });
+    out.push({ key, stores: stores.size, masterTotal, total, avg, highest, lowest, netQtyDiff, netValueDiff, completion });
   });
   return out.sort((a, b) => b.total - a.total);
 }
@@ -403,123 +385,39 @@ function renderKPIs() {
 }
 
 /* ---------------------------------------------------------------------- *
- * 7. RENDER: OVERVIEW
- * ---------------------------------------------------------------------- */
-function renderOverview() {
-  const rec = APP.filtered;
-
-  // Daily trend
-  const byDate = groupBy(rec, r => r.dateStr);
-  const dateKeys = Array.from(byDate.keys()).filter(Boolean).sort();
-  const dailyTotals = dateKeys.map(k => byDate.get(k).reduce((a, r) => a + r.gc, 0));
-  ChartsLib.lineChart('dailyTrendChart', dateKeys.map(k => fmtDate(k)), [{ label: 'Global Count', data: dailyTotals }]);
-
-  // Monthly trend
-  const byMonth = groupBy(rec, r => r.month);
-  const monthKeys = Array.from(byMonth.keys()).sort((a, b) => new Date('1 ' + a) - new Date('1 ' + b));
-  const monthlyTotals = monthKeys.map(k => byMonth.get(k).reduce((a, r) => a + r.gc, 0));
-  ChartsLib.barChart('monthlyTrendChart', monthKeys, [{ label: 'Global Count', data: monthlyTotals }]);
-
-  // Top / Bottom 10 stores
-  const byStore = aggregateBy(rec, r => r.storeCode, code => 1);
-  const storeNameLookup = {};
-  rec.forEach(r => storeNameLookup[r.storeCode] = r.storeName);
-  const sorted = [...byStore].sort((a, b) => b.total - a.total);
-  const top10 = sorted.slice(0, 10);
-  const bottom10 = sorted.slice(-10).reverse();
-  ChartsLib.horizontalBar('top10Chart', top10.map(s => storeNameLookup[s.key] || s.key), [{ label: 'Global Count', data: top10.map(s => s.total) }], true);
-  ChartsLib.horizontalBar('bottom10Chart', bottom10.map(s => storeNameLookup[s.key] || s.key), [{ label: 'Global Count', data: bottom10.map(s => s.total) }], false);
-
-  // Best performers
-  const rmAgg = aggregateBy(rec, r => r.rm, key => masterStoresFor('rm', key));
-  const romAgg = aggregateBy(rec, r => r.rom, key => masterStoresFor('rom', key));
-  const sdAgg = aggregateBy(rec, r => r.sd, key => masterStoresFor('sd', key));
-  const bestRM = rmAgg[0];
-  const bestROM = romAgg[0];
-  const bestSD = sdAgg[0];
-  const highestStore = sorted[0];
-  const lowestStore = sorted[sorted.length - 1];
-
-  const bestGrid = $('#overviewBestGrid');
-  const items = [
-    { label: 'Best RM', name: bestRM?.key, value: bestRM?.total, icon: '🏆' },
-    { label: 'Best ROM', name: bestROM?.key, value: bestROM?.total, icon: '🏆' },
-    { label: 'Best SD', name: bestSD?.key, value: bestSD?.total, icon: '🏆' },
-    { label: 'Highest Store', name: storeNameLookup[highestStore?.key] || highestStore?.key, value: highestStore?.total, icon: '⬆️' },
-    { label: 'Lowest Store', name: storeNameLookup[lowestStore?.key] || lowestStore?.key, value: lowestStore?.total, icon: '⬇️' },
-  ];
-  bestGrid.innerHTML = items.map(it => `
-    <div class="kpi-card gold">
-      <div class="kpi-top"><span class="kpi-label">${it.label}</span><span class="kpi-icon">${it.icon}</span></div>
-      <div class="kpi-value" style="font-size:16px;">${it.name || '—'}</div>
-      <div class="kpi-trend up">${fmtNum(it.value)} GC</div>
-    </div>`).join('');
-}
-
-/* ---------------------------------------------------------------------- *
- * 8. RENDER: RM / ROM / SD TABLES + CHARTS
+ * 7. RENDER: RM / ROM / SD TABLES
  * ---------------------------------------------------------------------- */
 function renderRM() {
   const agg = aggregateBy(APP.filtered, r => r.rm, key => masterStoresFor('rm', key));
   renderGroupTable('#rmTable tbody', agg);
-  ChartsLib.barChart('rmBarChart', agg.map(a => a.key), [{ label: 'Total GC', data: agg.map(a => a.total) }]);
-  const byDate = {};
-  APP.filtered.forEach(r => {
-    byDate[r.dateStr] = byDate[r.dateStr] || {};
-    byDate[r.dateStr][r.rm] = (byDate[r.dateStr][r.rm] || 0) + r.gc;
-  });
-  const dateKeys = Object.keys(byDate).filter(Boolean).sort();
-  const rmNames = agg.map(a => a.key);
-  ChartsLib.lineChart('rmLineChart', dateKeys.map(fmtDate), rmNames.map((rm, i) => ({
-    label: rm, data: dateKeys.map(d => byDate[d][rm] || 0)
-  })));
 }
 
 function renderROM() {
   const agg = aggregateBy(APP.filtered, r => r.rom, key => masterStoresFor('rom', key));
   renderGroupTable('#romTable tbody', agg);
-  ChartsLib.barChart('romBarChart', agg.map(a => a.key), [{ label: 'GC', data: agg.map(a => a.total) }]);
-  ChartsLib.pieChart('romPieChart', agg.map(a => a.key), agg.map(a => a.total));
-  const byDate = {};
-  APP.filtered.forEach(r => {
-    byDate[r.dateStr] = byDate[r.dateStr] || {};
-    byDate[r.dateStr][r.rom] = (byDate[r.dateStr][r.rom] || 0) + r.gc;
-  });
-  const dateKeys = Object.keys(byDate).filter(Boolean).sort();
-  const top5 = agg.slice(0, 5).map(a => a.key);
-  ChartsLib.lineChart('romTrendChart', dateKeys.map(fmtDate), top5.map(rom => ({
-    label: rom, data: dateKeys.map(d => byDate[d][rom] || 0)
-  })));
 }
 
 function renderSD() {
-  const agg = aggregateBy(APP.filtered, r => r.sd, key => masterStoresFor('sd', key));
+  // An SD name that is also a known ROM name means that person is acting as
+  // the ROM for that store, not a genuine SD — exclude those from the SD
+  // summary so ROM names don't repeat/duplicate here.
+  const romNames = new Set(APP.storeMaster.map(m => m.rom));
+  const agg = aggregateBy(APP.filtered, r => r.sd, key => masterStoresFor('sd', key))
+    .filter(a => !romNames.has(a.key));
   renderGroupTable('#sdTable tbody', agg);
-  ChartsLib.barChart('sdBarChart', agg.slice(0, 20).map(a => a.key), [{ label: 'GC', data: agg.slice(0, 20).map(a => a.total) }]);
-  const byDate = {};
-  APP.filtered.forEach(r => {
-    byDate[r.dateStr] = byDate[r.dateStr] || {};
-    byDate[r.dateStr][r.sd] = (byDate[r.dateStr][r.sd] || 0) + r.gc;
-  });
-  const dateKeys = Object.keys(byDate).filter(Boolean).sort();
-  const top5 = agg.slice(0, 5).map(a => a.key);
-  ChartsLib.lineChart('sdTrendChart', dateKeys.map(fmtDate), top5.map(sd => ({
-    label: sd, data: dateKeys.map(d => byDate[d][sd] || 0)
-  })));
 }
 
 function renderGroupTable(sel, agg) {
   const tbody = $(sel);
-  tbody.innerHTML = agg.map((a, i) => `
+  tbody.innerHTML = agg.map((a) => `
     <tr>
-      <td><span class="rank-pill">${i + 1}</span> ${a.key}</td>
-      <td>${a.stores}</td>
-      <td><strong>${fmtNum(a.total)}</strong></td>
-      <td>${fmtNum(a.avg, 1)}</td>
-      <td>${fmtNum(a.highest)}</td>
-      <td>${fmtNum(a.lowest)}</td>
+      <td><strong>${a.key}</strong></td>
+      <td>${fmtNum(a.masterTotal)}</td>
+      <td>${fmtNum(a.stores)}</td>
       <td>${completionBadge(a.completion)}</td>
-    </tr>`).join('') || '<tr><td colspan="7" class="text-muted" style="text-align:center;padding:20px;">No data for selected filters</td></tr>';
+      <td>${fmtNum(a.netQtyDiff)}</td>
+      <td>${fmtNum(a.netValueDiff, 2)}</td>
+    </tr>`).join('') || '<tr><td colspan="6" class="text-muted" style="text-align:center;padding:20px;">No data for selected filters</td></tr>';
 }
 
 function completionBadge(pct) {
@@ -528,61 +426,38 @@ function completionBadge(pct) {
 }
 
 /* ---------------------------------------------------------------------- *
- * 9. RENDER: STORE SUMMARY (with pagination + ranking + trend + status)
+ * 8. RENDER: STORE WISE GC (as per Excel format — one row per count entry)
  * ---------------------------------------------------------------------- */
-function renderStore() {
-  const byStore = groupBy(APP.filtered, r => r.storeCode);
-  let list = [];
-  byStore.forEach((items, code) => {
-    const sorted = [...items].sort((a, b) => (a.date || 0) - (b.date || 0));
-    const last = sorted[sorted.length - 1];
-    const total = items.reduce((a, r) => a + r.gc, 0);
-    const first = sorted[0];
-    const trendPct = (first && last && first.gc) ? ((last.gc - first.gc) / first.gc) * 100 : 0;
-    list.push({
-      storeCode: code, storeName: last?.storeName, rm: last?.rm, rom: last?.rom, sd: last?.sd,
-      lastDate: last?.date, month: last?.month, gc: total, trendPct,
-      status: total > 0 ? 'Counted' : 'Pending'
-    });
-  });
+function renderStoreWiseGC() {
+  const term = ($('#storeSearchInput')?.value || '').toLowerCase();
+  let list = APP.filtered.filter(r => !term || `${r.storeCode} ${r.storeName} ${r.rm} ${r.rom} ${r.sd}`.toLowerCase().includes(term));
 
-  // include stores from master not present in filtered data as Pending
-  if (!getFilterState().search && !getFilterState().rm && !getFilterState().rom && !getFilterState().sd && !getFilterState().region) {
-    APP.storeMaster.forEach(m => {
-      if (!byStore.has(m.code)) {
-        list.push({ storeCode: m.code, storeName: m.name, rm: m.rm, rom: m.rom, sd: m.sd, lastDate: null, month: '—', gc: 0, trendPct: 0, status: 'Pending' });
-      }
-    });
-  }
-
-  list.sort((a, b) => {
+  list = [...list].sort((a, b) => {
     const dir = APP.storeSort.dir === 'asc' ? 1 : -1;
     const k = APP.storeSort.key;
-    let va = k === 'store' ? a.storeName : k === 'lastDate' ? (a.lastDate ? a.lastDate.getTime() : 0) : a[k];
-    let vb = k === 'store' ? b.storeName : k === 'lastDate' ? (b.lastDate ? b.lastDate.getTime() : 0) : b[k];
+    let va = k === 'date' ? (a.date ? a.date.getTime() : 0) : a[k];
+    let vb = k === 'date' ? (b.date ? b.date.getTime() : 0) : b[k];
     if (typeof va === 'string') return va.localeCompare(vb) * dir;
     return ((va || 0) - (vb || 0)) * dir;
   });
-
-  list.forEach((s, i) => s.rank = i + 1);
 
   const totalPages = Math.max(1, Math.ceil(list.length / APP.storePageSize));
   APP.storePage = Math.min(APP.storePage, totalPages);
   const start = (APP.storePage - 1) * APP.storePageSize;
   const pageItems = list.slice(start, start + APP.storePageSize);
 
-  $('#storeTable tbody').innerHTML = pageItems.map(s => `
+  $('#storeTable tbody').innerHTML = pageItems.map(r => `
     <tr>
-      <td><span class="rank-pill">${s.rank}</span></td>
-      <td><strong>${s.storeName}</strong><br><span class="text-muted" style="font-size:11px;">${s.storeCode}</span></td>
-      <td>${s.rm}</td><td>${s.rom}</td><td>${s.sd}</td>
-      <td>${fmtDate(s.lastDate)}</td><td>${s.month}</td>
-      <td><strong>${fmtNum(s.gc)}</strong></td>
-      <td>${s.trendPct >= 0 ? `<span class="badge success">▲ ${fmtPct(s.trendPct)}</span>` : `<span class="badge danger">▼ ${fmtPct(Math.abs(s.trendPct))}</span>`}</td>
-      <td>${s.status === 'Counted' ? '<span class="badge success">Counted</span>' : '<span class="badge warning">Pending</span>'}</td>
-    </tr>`).join('') || '<tr><td colspan="10" style="text-align:center;padding:20px;" class="text-muted">No stores match filters</td></tr>';
+      <td>${r.storeCode}</td>
+      <td><strong>${r.storeName}</strong></td>
+      <td>${r.rm}</td><td>${r.rom}</td><td>${r.sd}</td>
+      <td>${fmtDate(r.date)}</td><td>${r.month}</td>
+      <td><strong>${fmtNum(r.gc)}</strong></td>
+      <td>${fmtNum(r.netQtyDiff)}</td>
+      <td>${fmtNum(r.netValueDiff, 2)}</td>
+    </tr>`).join('') || '<tr><td colspan="10" style="text-align:center;padding:20px;" class="text-muted">No records match filters</td></tr>';
 
-  renderPagination('#storePagination', APP.storePage, totalPages, (p) => { APP.storePage = p; renderStore(); });
+  renderPagination('#storePagination', APP.storePage, totalPages, (p) => { APP.storePage = p; renderStoreWiseGC(); });
 
   APP.storeExportData = list;
 }
@@ -605,57 +480,7 @@ function renderPagination(sel, current, total, onPage) {
 }
 
 /* ---------------------------------------------------------------------- *
- * 10. RENDER: DAILY / MONTHLY TRENDS
- * ---------------------------------------------------------------------- */
-function renderDaily() {
-  const byDate = groupBy(APP.filtered, r => r.dateStr);
-  const dateKeys = Array.from(byDate.keys()).filter(Boolean).sort();
-  const totals = dateKeys.map(k => byDate.get(k).reduce((a, r) => a + r.gc, 0));
-  ChartsLib.lineChart('dailyTrendChart2', dateKeys.map(fmtDate), [{ label: 'Global Count', data: totals }]);
-  ChartsLib.areaChart('dailyComparisonChart', dateKeys.map(fmtDate), [{ label: 'Global Count', data: totals }]);
-
-  // Heat map: store x date grid (counted = filled)
-  const stores = uniqueSorted(APP.filtered.map(r => r.storeCode)).slice(0, 30);
-  const cellMap = {};
-  APP.filtered.forEach(r => { cellMap[r.storeCode + '|' + r.dateStr] = r.gc; });
-  let html = '<table class="data-table"><thead><tr><th>Store</th>' + dateKeys.map(d => `<th>${fmtDate(d)}</th>`).join('') + '</tr></thead><tbody>';
-  stores.forEach(code => {
-    html += `<tr><td>${code}</td>`;
-    dateKeys.forEach(d => {
-      const v = cellMap[code + '|' + d];
-      const intensity = v ? Math.min(1, v / 20) : 0;
-      const color = v ? `rgba(215,25,32,${0.15 + intensity * 0.65})` : 'transparent';
-      html += `<td style="background:${color};text-align:center;">${v ?? ''}</td>`;
-    });
-    html += '</tr>';
-  });
-  html += '</tbody></table>';
-  $('#heatMapWrap').innerHTML = html + '<p class="small-note" style="margin-top:8px;">Showing first 30 stores in current filter · darker = higher count</p>';
-}
-
-function renderMonthly() {
-  const byMonth = groupBy(APP.filtered, r => r.month);
-  const monthKeys = Array.from(byMonth.keys()).sort((a, b) => new Date('1 ' + a) - new Date('1 ' + b));
-  const totals = monthKeys.map(k => byMonth.get(k).reduce((a, r) => a + r.gc, 0));
-  ChartsLib.barChart('monthlyTrendChart2', monthKeys, [{ label: 'Global Count', data: totals }]);
-  ChartsLib.doughnutChart('monthlyComparisonChart', monthKeys, totals);
-
-  // Rolling average (7-day) & growth % over daily series
-  const byDate = groupBy(APP.filtered, r => r.dateStr);
-  const dateKeys = Array.from(byDate.keys()).filter(Boolean).sort();
-  const dailyTotals = dateKeys.map(k => byDate.get(k).reduce((a, r) => a + r.gc, 0));
-  const rolling = dailyTotals.map((_, i) => {
-    const slice = dailyTotals.slice(Math.max(0, i - 6), i + 1);
-    return slice.reduce((a, b) => a + b, 0) / slice.length;
-  });
-  ChartsLib.lineChart('rollingAvgChart', dateKeys.map(fmtDate), [{ label: '7-Day Rolling Avg', data: rolling.map(v => Number(v.toFixed(1))) }]);
-
-  const growth = dailyTotals.map((v, i) => i === 0 ? 0 : (dailyTotals[i - 1] ? ((v - dailyTotals[i - 1]) / dailyTotals[i - 1]) * 100 : 0));
-  ChartsLib.barChart('growthChart', dateKeys.map(fmtDate), [{ label: 'Growth %', data: growth.map(v => Number(v.toFixed(1))) }], true);
-}
-
-/* ---------------------------------------------------------------------- *
- * 11. RENDER: RAW DATA (fully dynamic columns/rows)
+ * 9. RENDER: RAW DATA (fully dynamic columns/rows)
  * ---------------------------------------------------------------------- */
 function renderRawHead() {
   const headRow = $('#rawDataHeadRow');
@@ -699,22 +524,19 @@ function formatRawCell(cell) {
 }
 
 /* ---------------------------------------------------------------------- *
- * 12. RENDER ALL
+ * 10. RENDER ALL
  * ---------------------------------------------------------------------- */
 function renderAll() {
   renderKPIs();
-  renderOverview();
   renderRM();
   renderROM();
   renderSD();
-  renderStore();
-  renderDaily();
-  renderMonthly();
+  renderStoreWiseGC();
   renderRaw();
 }
 
 /* ---------------------------------------------------------------------- *
- * 13. EXPORTS
+ * 11. EXPORTS
  * ---------------------------------------------------------------------- */
 function exportRawExcel() {
   const ws = XLSX.utils.aoa_to_sheet([APP.columns, ...APP.rawFilteredRows]);
@@ -729,18 +551,19 @@ function exportRawCsv() {
 }
 
 function exportStoreExcel() {
-  const data = (APP.storeExportData || []).map(s => ({
-    Rank: s.rank, Store: s.storeName, Code: s.storeCode, RM: s.rm, ROM: s.rom, SD: s.sd,
-    'Last Date': fmtDate(s.lastDate), Month: s.month, 'Global Count': s.gc, 'Trend %': s.trendPct.toFixed(1), Status: s.status
+  const data = (APP.storeExportData || []).map(r => ({
+    'Store Code': r.storeCode, 'Store Name': r.storeName, RM: r.rm, ROM: r.rom, SD: r.sd,
+    Date: fmtDate(r.date), Month: r.month, 'Global Count': r.gc,
+    'Total Net Qty Diff': r.netQtyDiff, 'Total Net MAP Value Diff': r.netValueDiff,
   }));
   const ws = XLSX.utils.json_to_sheet(data);
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Store Summary');
-  XLSX.writeFile(wb, `Hamleys_GC_StoreSummary_${Date.now()}.xlsx`);
+  XLSX.utils.book_append_sheet(wb, ws, 'Store wise GC');
+  XLSX.writeFile(wb, `Hamleys_GC_StoreWiseGC_${Date.now()}.xlsx`);
 }
 
 /* ---------------------------------------------------------------------- *
- * 14. THEME / TABS / EVENTS
+ * 12. THEME / TABS / EVENTS
  * ---------------------------------------------------------------------- */
 function initTheme() {
   const saved = localStorage.getItem('hamleys-gc-theme') || 'light';
@@ -752,7 +575,6 @@ function initTheme() {
     document.documentElement.setAttribute('data-theme', next);
     localStorage.setItem('hamleys-gc-theme', next);
     $('#themeToggle').textContent = next === 'dark' ? '☀️' : '🌙';
-    ChartsLib.refreshAllThemes();
   });
 }
 
@@ -768,7 +590,7 @@ function initTabs() {
 }
 
 function initEvents() {
-  ['#fDate', '#fMonth', '#fYear', '#fRM', '#fROM', '#fSD', '#fRegion'].forEach(s => $(s).addEventListener('change', applyFilters));
+  ['#fDate', '#fMonth', '#fYear', '#fRM', '#fROM', '#fSD'].forEach(s => $(s).addEventListener('change', applyFilters));
   $('#fSearch').addEventListener('input', debounce(applyFilters, 250));
   $('#resetFiltersBtn').addEventListener('click', resetFilters);
   $('#refreshBtn').addEventListener('click', async () => {
@@ -777,11 +599,7 @@ function initEvents() {
     $('#refreshBtn').innerHTML = '⟳ Refresh';
   });
 
-  $all('[data-download-chart]').forEach(btn => btn.addEventListener('click', () => {
-    ChartsLib.downloadChart(btn.dataset.downloadChart);
-  }));
-
-  $('#storeSearchInput').addEventListener('input', debounce(() => { APP.storePage = 1; renderStore(); }, 250));
+  $('#storeSearchInput').addEventListener('input', debounce(() => { APP.storePage = 1; renderStoreWiseGC(); }, 250));
   $('#storeExportBtn').addEventListener('click', exportStoreExcel);
 
   $('#rawSearchInput').addEventListener('input', debounce(() => { APP.rawPage = 1; renderRaw(); }, 250));
@@ -790,44 +608,19 @@ function initEvents() {
   $('#rawPrintBtn').addEventListener('click', () => window.print());
 }
 
-/* Override renderStore to respect its own search box (separate from global filters) */
-const _origRenderStore = renderStore;
-renderStore = function () {
-  const term = ($('#storeSearchInput')?.value || '').toLowerCase();
-  if (!term) return _origRenderStore();
-  const byStore = groupBy(APP.filtered.filter(r => `${r.storeCode} ${r.storeName} ${r.rm} ${r.rom} ${r.sd}`.toLowerCase().includes(term)), r => r.storeCode);
-  let list = [];
-  byStore.forEach((items, code) => {
-    const sorted = [...items].sort((a, b) => (a.date || 0) - (b.date || 0));
-    const last = sorted[sorted.length - 1];
-    const total = items.reduce((a, r) => a + r.gc, 0);
-    list.push({ storeCode: code, storeName: last?.storeName, rm: last?.rm, rom: last?.rom, sd: last?.sd, lastDate: last?.date, month: last?.month, gc: total, trendPct: 0, status: 'Counted' });
-  });
-  list.forEach((s, i) => s.rank = i + 1);
-  $('#storeTable tbody').innerHTML = list.map(s => `
-    <tr><td><span class="rank-pill">${s.rank}</span></td><td><strong>${s.storeName}</strong><br><span class="text-muted" style="font-size:11px;">${s.storeCode}</span></td>
-    <td>${s.rm}</td><td>${s.rom}</td><td>${s.sd}</td><td>${fmtDate(s.lastDate)}</td><td>${s.month}</td>
-    <td><strong>${fmtNum(s.gc)}</strong></td><td>—</td><td><span class="badge success">Counted</span></td></tr>`).join('')
-    || '<tr><td colspan="10" style="text-align:center;padding:20px;" class="text-muted">No matches</td></tr>';
-  $('#storePagination').innerHTML = '';
-  APP.storeExportData = list;
-};
-
-/* Table header sort for RM/ROM/SD tables & store table (client-side, simple) */
 function initSortableHeaders() {
-  const map = { storeTable: 'store' };
   $all('#storeTable thead th').forEach(th => {
     th.addEventListener('click', () => {
       const key = th.dataset.key;
       if (APP.storeSort.key === key) APP.storeSort.dir = APP.storeSort.dir === 'asc' ? 'desc' : 'asc';
       else { APP.storeSort.key = key; APP.storeSort.dir = 'desc'; }
-      renderStore();
+      renderStoreWiseGC();
     });
   });
 }
 
 /* ---------------------------------------------------------------------- *
- * 15. INIT
+ * 13. INIT
  * ---------------------------------------------------------------------- */
 document.addEventListener('DOMContentLoaded', async () => {
   initTheme();

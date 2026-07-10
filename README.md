@@ -1,8 +1,9 @@
 # Hamleys Global Count (GC) Dashboard
 
-A 100% client-side, GitHub Pages–ready executive dashboard for monitoring daily
+A 100% client-side, GitHub Pages–ready dashboard for monitoring daily
 Global Count activity across Hamleys India stores. No backend, no database —
-just HTML, CSS and JavaScript, powered by Chart.js and SheetJS.
+just HTML, CSS and JavaScript, powered by SheetJS. Purely tabular (no charts)
+by design — KPI cards plus RM / ROM / SD / Store / Raw Data tables.
 
 ---
 
@@ -17,7 +18,6 @@ Hamleys-GC-Dashboard/
 │   └── style.css          → Hamleys-branded theme (red / white / gold)
 ├── js/
 │   ├── app.js              → Data loading, filters, KPIs, tables, exports
-│   ├── charts.js            → Chart.js wrapper (all chart types + PNG export)
 │   └── excel.js             → SheetJS Excel→JSON engine (Admin page)
 ├── assets/
 │   └── logo.png            → Hamleys logo (used on every page)
@@ -100,17 +100,24 @@ Only needed when stores open/close or reporting lines change:
 - **Header** — logo, title, last-updated date, Refresh, Admin, Dark/Light mode.
 - **KPI cards** — Total Global Count, Total Stores, Stores Uploaded, RM/ROM/SD
   counts, Average/Highest/Lowest GC, Completion %.
-- **Filters** — Date, Month, Year, RM, ROM, SD, Region (auto-derived from
-  store name), Store search, Reset.
-- **Tabs** — Overview, RM Summary, ROM Summary, SD Summary, Store Summary,
-  Daily Trends, Monthly Trends, Raw Data.
-- **Charts** — bar, line, pie, doughnut, area, horizontal bar, top/bottom 10,
-  heat-map style calendar — built with Chart.js, animated, with tooltips and
-  PNG download on every chart.
-- **Raw Data tab** — every column from your Excel, dynamically rendered,
-  with search, column sort, pagination, Export Excel/CSV and Print.
+- **Filters** — Date (calendar picker), Month, Year, RM, ROM, SD, Store search,
+  Reset.
+- **Tabs**:
+  - **RM Summary** — RM, Total Stores, GC Stores, Completion %, Total Net Qty
+    Diff, Total Net MAP Value Diff.
+  - **ROM Summary** — same column layout, grouped by ROM.
+  - **SD Summary** — same column layout, grouped by SD. Any SD name that is
+    also a known ROM name is automatically excluded here (that person is
+    acting as the ROM for that store, not a distinct SD), so names never
+    repeat between the ROM and SD tables.
+  - **Store wise GC** — one row per Global Count entry, in the same shape as
+    the source Excel (Store Code, Store Name, RM, ROM, SD, Date, Month,
+    Global Count, Total Net Qty Diff, Total Net MAP Value Diff), with search,
+    column sort, pagination and Export Excel.
+  - **Raw Data** — every column from your Excel, dynamically rendered, with
+    search, column sort, pagination, Export Excel/CSV and Print.
 - Auto-refresh every 5 minutes, animated KPI counters, responsive layout for
-  mobile/tablet/desktop.
+  mobile/tablet/desktop. No charts — this build is intentionally table-first.
 
 ---
 
@@ -123,20 +130,6 @@ Only needed when stores open/close or reporting lines change:
 | RM/ROM/SD show as "Unassigned" | The store code in your daily file isn't present in `data/store-mapping.json`. Update the mapping (Section 5) and re-generate. |
 | Changes don't show after upload | Hard-refresh the browser (Ctrl/Cmd+Shift+R) or click **⟳ Refresh** — GitHub Pages / your browser may cache the JSON briefly. |
 | Auto-Publish fails with 401/403 | Your Personal Access Token is invalid, expired, or lacks **Contents: Read and write** permission on the repo. |
-| Charts look broken/blank | Check your internet connection — Chart.js and SheetJS load from a CDN (`cdnjs.cloudflare.com`). No local install is required. |
+| Export buttons don't work | Check your internet connection — SheetJS loads from a CDN (`cdnjs.cloudflare.com`). No local install is required. |
 | Logo missing | Confirm `assets/logo.png` was uploaded and the path/case matches exactly (GitHub Pages is case-sensitive). |
-
----
-
-## 8. Technical Notes
-
-- Pure static site: **HTML + CSS + JavaScript only** — no Node.js, no npm
-  build step, no server.
-- External libraries loaded via CDN: **Chart.js 4.4**, **SheetJS (xlsx) 0.18**.
-- All computation (KPIs, aggregations, growth %, completion %, rankings)
-  happens client-side in `js/app.js` against the JSON produced by the Admin
-  page — the same JSON structure works regardless of how many columns your
-  Excel export contains.
-- Dark/Light mode and GitHub publish settings persist via `localStorage`.
-
-Built for Hamleys India Retail Operations.
+| Dashboard breaks after an update | `index.html` and `js/app.js` change together — always upload **all** files from this folder in the same commit, 
