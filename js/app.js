@@ -440,7 +440,7 @@ function renderGroupTable(sel, agg) {
       <td>${fmtNum(a.stores)}</td>
       <td>${completionBadge(a.completion)}</td>
       <td>${fmtNum(a.netQtyDiff)}</td>
-      <td>${fmtNum(a.netValueDiff, 2)}</td>
+      <td>${fmtNum(a.netValueDiff)}</td>
     </tr>`).join('') || '<tr><td colspan="6" class="text-muted" style="text-align:center;padding:20px;">No data for selected filters</td></tr>';
 }
 
@@ -500,7 +500,7 @@ function renderStoreWiseGC() {
       <td>${fmtNum(r.excessQty)}</td>
       <td>${fmtNum(r.excessMapValue, 2)}</td>
       <td>${fmtNum(r.netQtyDiff)}</td>
-      <td>${fmtNum(r.netValueDiff, 2)}</td>
+      <td>${fmtNum(r.netValueDiff)}</td>
       <td>${r.doneBy || ''}</td>
       <td>${r.validatedBy || ''}</td>
       <td>${r.movedTo2997 || ''}</td>
