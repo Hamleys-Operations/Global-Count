@@ -110,6 +110,32 @@ function setProgress(pct) {
 /* ---------------------------------------------------------------------- *
  * Generic Excel reader (dynamic — no hardcoded columns)
  * ---------------------------------------------------------------------- */
+/**
+ * Some workbooks (especially ones generated/edited by external tools,
+ * macros, or repeated exports) store a stale `!ref` dimension on the sheet
+ * that undercounts the actually-populated cells. SheetJS's sheet_to_json()
+ * trusts that declared range, so a stale `!ref` silently truncates rows —
+ * this is the most common reason an upload "only takes" some fixed number
+ * of rows even though the file clearly has more data below.
+ *
+ * This scans every real cell address on the sheet and returns the true
+ * min/max row & column actually used, so we can widen `!ref` before
+ * converting and guarantee no populated row/column is ever dropped.
+ */
+function computeActualUsedRange(ws) {
+  let minR = null, minC = null, maxR = null, maxC = null;
+  for (const addr in ws) {
+    if (addr[0] === '!') continue; // skip meta keys like !ref, !merges, !cols
+    const cell = XLSX.utils.decode_cell(addr);
+    if (minR === null || cell.r < minR) minR = cell.r;
+    if (maxR === null || cell.r > maxR) maxR = cell.r;
+    if (minC === null || cell.c < minC) minC = cell.c;
+    if (maxC === null || cell.c > maxC) maxC = cell.c;
+  }
+  if (minR === null) return null;
+  return { s: { r: minR, c: minC }, e: { r: maxR, c: maxC } };
+}
+
 function readWorkbookFile(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -119,7 +145,26 @@ function readWorkbookFile(file) {
         const wb = XLSX.read(data, { type: 'array', cellDates: true });
         const firstSheetName = wb.SheetNames[0];
         const ws = wb.Sheets[firstSheetName];
-        const aoa = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: '' });
+
+        // Widen the sheet's declared range to the true used range so no row
+        // is ever silently dropped because of a stale/undersized `!ref`.
+        const declared = ws['!ref'] ? XLSX.utils.decode_range(ws['!ref']) : null;
+        const actual = computeActualUsedRange(ws);
+        if (actual) {
+          const widened = {
+            s: {
+              r: declared ? Math.min(declared.s.r, actual.s.r) : actual.s.r,
+              c: declared ? Math.min(declared.s.c, actual.s.c) : actual.s.c,
+            },
+            e: {
+              r: declared ? Math.max(declared.e.r, actual.e.r) : actual.e.r,
+              c: declared ? Math.max(declared.e.c, actual.e.c) : actual.e.c,
+            },
+          };
+          ws['!ref'] = XLSX.utils.encode_range(widened);
+        }
+
+        const aoa = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: '', range: ws['!ref'] });
         // First row = headers, dynamic — no assumptions about count/order
         const columns = (aoa[0] || []).map(h => (h || '').toString().trim());
         const rows = aoa.slice(1)
@@ -187,6 +232,88 @@ function mergeWithMapping(columns, rows, mapping) {
   });
 
   return { columns: outColumns, rows: outRows, filledCount, unmatchedStores: Array.from(unmatchedStores) };
+}
+
+/* ---------------------------------------------------------------------- *
+ * Merge with already-published data — lets a daily upload contain only
+ * the NEW day's rows instead of the full history every time.
+ * ---------------------------------------------------------------------- */
+async function fetchExistingGCData() {
+  try {
+    const res = await fetch('data/gc-data.json?t=' + Date.now());
+    if (!res.ok) return null;
+    return await res.json();
+  } catch { return null; }
+}
+
+function rowsToObjects(columns, rows) {
+  return rows.map(r => {
+    const obj = {};
+    columns.forEach((c, i) => { obj[c] = r[i] ?? ''; });
+    return obj;
+  });
+}
+
+function objectsToRows(columns, objects) {
+  return objects.map(o => columns.map(c => (o[c] === undefined ? '' : o[c])));
+}
+
+/** Normalize a date-ish cell value (ISO string, free-text, or leftover Excel
+ *  serial number) to "YYYY-MM-DD" purely for matching purposes, so the merge
+ *  key is stable even if existing data stored dates slightly differently. */
+function normalizeDateKey(v) {
+  if (v === null || v === undefined || v === '') return '';
+  if (typeof v === 'number') {
+    const d = excelSerialToDate(v);
+    return d ? toLocalISODate(d) : String(v);
+  }
+  const s = String(v).trim();
+  const iso = s.match(/^(\d{4}-\d{2}-\d{2})/);
+  return iso ? iso[1] : s;
+}
+
+/**
+ * Merge newly-uploaded rows into the existing published dataset. Rows are
+ * matched by "Store Code + Date" — if that combination already exists in
+ * the published data, the new upload's row REPLACES it (so re-uploading a
+ * day corrects it instead of duplicating); otherwise it's appended as a new
+ * row. Everything already published for other dates/stores is left as-is.
+ */
+function mergeWithExistingData(existing, newColumns, newRows) {
+  if (!existing || !Array.isArray(existing.columns) || !Array.isArray(existing.rows) || !existing.rows.length) {
+    return { columns: newColumns, rows: newRows, addedCount: newRows.length, updatedCount: 0, totalCount: newRows.length, merged: false };
+  }
+
+  // Union of columns — existing layout first, then any genuinely new ones
+  const combinedColumns = [...existing.columns];
+  newColumns.forEach(c => { if (!combinedColumns.includes(c)) combinedColumns.push(c); });
+
+  const codeIdx = findColIndex(combinedColumns, ['store code']);
+  const dateIdx = findColIndex(combinedColumns, ['date of global count', 'date']);
+  const codeCol = codeIdx !== -1 ? combinedColumns[codeIdx] : null;
+  const dateCol = dateIdx !== -1 ? combinedColumns[dateIdx] : null;
+
+  function keyOf(obj) {
+    const code = codeCol ? String(obj[codeCol] || '').trim().toLowerCase() : '';
+    const date = dateCol ? normalizeDateKey(obj[dateCol]) : '';
+    return `${code}__${date}`;
+  }
+
+  const existingObjs = rowsToObjects(existing.columns, existing.rows);
+  const newObjs = rowsToObjects(newColumns, newRows);
+
+  const byKey = new Map();
+  existingObjs.forEach(o => byKey.set(keyOf(o), o));
+
+  let addedCount = 0, updatedCount = 0;
+  newObjs.forEach(o => {
+    const k = keyOf(o);
+    if (byKey.has(k)) updatedCount++; else addedCount++;
+    byKey.set(k, o); // new upload wins on conflict
+  });
+
+  const mergedRows = objectsToRows(combinedColumns, Array.from(byKey.values()));
+  return { columns: combinedColumns, rows: mergedRows, addedCount, updatedCount, totalCount: mergedRows.length, merged: true };
 }
 
 /* ---------------------------------------------------------------------- *
@@ -259,7 +386,7 @@ async function processGCFile(file) {
     setStep('validate', 'done', 'All required columns present');
     setProgress(60);
 
-    // STEP 4: Mapping merge
+    // STEP 4: Mapping merge (fills RM/ROM/SD for this upload's own rows)
     setStep('map', 'active', 'Loading store mapping…');
     let mapping = ADMIN.storeMapping;
     if (!mapping || !mapping.length) {
@@ -267,15 +394,37 @@ async function processGCFile(file) {
       ADMIN.storeMapping = mapping;
     }
     const merged = mergeWithMapping(columns, rows, mapping);
-    ADMIN.columns = merged.columns;
-    ADMIN.rows = merged.rows;
     setStep('map', 'done', merged.unmatchedStores.length ? `${merged.unmatchedStores.length} store(s) not in mapping` : 'All stores matched');
-    setProgress(80);
+    setProgress(70);
     if (merged.unmatchedStores.length) {
       showAlert('#alertsArea', 'info', `${merged.unmatchedStores.length} store code(s) were not found in the mapping reference and could not be auto-filled: <strong>${merged.unmatchedStores.slice(0, 15).join(', ')}${merged.unmatchedStores.length > 15 ? '…' : ''}</strong>. Their RM/ROM/SD (if blank) will show as "Unassigned" on the dashboard.`);
     }
 
-    // STEP 5: Build JSON
+    // STEP 5: Merge with already-published data (so a daily upload can
+    // contain just the new day's rows — everything already published stays)
+    const shouldMerge = $('#mergeWithExistingChk') ? $('#mergeWithExistingChk').checked : true;
+    let mergeResult;
+    if (shouldMerge) {
+      setStep('merge', 'active', 'Fetching published gc-data.json…');
+      const existing = await fetchExistingGCData();
+      mergeResult = mergeWithExistingData(existing, merged.columns, merged.rows);
+      if (mergeResult.merged) {
+        setStep('merge', 'done', `+${mergeResult.addedCount} new, ${mergeResult.updatedCount} updated — ${mergeResult.totalCount} total rows`);
+        if (mergeResult.updatedCount) {
+          showAlert('#alertsArea', 'info', `${mergeResult.updatedCount} row(s) matched an already-published Store Code + Date and were replaced with this upload's values (corrections). ${mergeResult.addedCount} brand-new row(s) were appended. Nothing else already published was touched.`);
+        }
+      } else {
+        setStep('merge', 'done', 'No published data.json found — this upload becomes the full dataset');
+      }
+    } else {
+      setStep('merge', 'done', 'Merge skipped — replacing with this file only');
+      mergeResult = { columns: merged.columns, rows: merged.rows, addedCount: merged.rows.length, updatedCount: 0, totalCount: merged.rows.length, merged: false };
+    }
+    ADMIN.columns = mergeResult.columns;
+    ADMIN.rows = mergeResult.rows;
+    setProgress(85);
+
+    // STEP 6: Build JSON
     setStep('build', 'active', 'Finalizing…');
     const stats = computeStats(ADMIN.columns, ADMIN.rows, mapping);
     const today = new Date();
@@ -297,7 +446,10 @@ async function processGCFile(file) {
     renderPreview(ADMIN.columns, ADMIN.rows);
     $('#resultActions').classList.remove('hidden');
     if (!validation.missingRequired.length) {
-      showAlert('#alertsArea', 'success', `Excel converted successfully — ${stats.totalRows} rows across ${stats.totalColumns} columns, ${stats.uniqueStores}/${stats.storesMasterCount} stores counted. Click "Download Updated gc-data.json" and replace the file at <code>data/gc-data.json</code> in your GitHub repo (or use Auto-Publish below).`);
+      const mergeNote = shouldMerge && mergeResult.merged
+        ? ` (${mergeResult.addedCount} new row(s) added, ${mergeResult.updatedCount} corrected, merged with what was already published)`
+        : '';
+      showAlert('#alertsArea', 'success', `Excel converted successfully — ${stats.totalRows} total rows across ${stats.totalColumns} columns${mergeNote}, ${stats.uniqueStores}/${stats.storesMasterCount} stores counted. Click "Download Updated gc-data.json" and replace the file at <code>data/gc-data.json</code> in your GitHub repo (or use Auto-Publish below).`);
     }
   } catch (err) {
     console.error(err);

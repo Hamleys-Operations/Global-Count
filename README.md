@@ -52,25 +52,41 @@ Hamleys-GC-Dashboard/
 
 ## 4. Daily Workflow — Uploading Today's Excel
 
+You only need to upload **the new day's rows** each time (e.g. just today's
+date) — you do **not** need to re-upload the full history. The Admin
+Generator fetches what's already published and merges your upload into it.
+
 1. Open your published site and click the **⚙ Admin** button (top-right of
    the dashboard header), or go directly to `.../admin.html`.
-2. Drag and drop (or browse to) today's **Global Count Excel** file into the
-   first upload box.
+2. Leave **"Merge with already-published data"** checked (this is the
+   default) — it fetches the current live `data/gc-data.json`, adds your
+   new rows, and leaves every previously-published row untouched. If you
+   upload a store/date combination that's already published, that row is
+   *corrected* with your new values instead of being duplicated. Uncheck
+   this only if you deliberately want to replace the entire dashboard with
+   just this one file.
+3. Drag and drop (or browse to) today's **Global Count Excel** file into the
+   upload box.
    - The **first row** of the **first sheet** is used as column headers.
    - **Every column is preserved** — nothing is hardcoded, so extra columns
      added later will still flow through to the Raw Data tab automatically.
-3. The generator will: read the file → convert to JSON → validate required
+   - The generator also defends against workbooks with a stale/undersized
+     sheet dimension (a common cause of only *some* rows being picked up) by
+     recomputing the true used range from the sheet's actual cells before
+     converting — no rows are silently dropped.
+4. The generator will: read the file → convert to JSON → validate required
    columns (Store Code, Store Name, Date, No. of SKU's Counted) → auto-fill
-   any missing RM / ROM / SD using `store-mapping.json` → build the final
-   dataset.
-4. Review the stats cards and the 15-row preview table.
-5. Click **⬇ Download Updated gc-data.json**.
-6. Replace the existing `data/gc-data.json` file in your GitHub repository
+   any missing RM / ROM / SD using `store-mapping.json` → merge with the
+   already-published data → build the final dataset.
+5. Review the stats cards (now reflecting the **full** merged dataset) and
+   the 15-row preview table.
+6. Click **⬇ Download Updated gc-data.json**.
+7. Replace the existing `data/gc-data.json` file in your GitHub repository
    with the downloaded file (upload it via the GitHub web UI — "Add file →
    Replace this file" — or `git add data/gc-data.json && git commit && git push`).
-7. Refresh the live dashboard (or click the **⟳ Refresh** button) — the new
-   data appears everywhere (KPIs, filters, charts, tables) **with no code
-   changes required**.
+8. Refresh the live dashboard (or click the **⟳ Refresh** button) — the new
+   data appears everywhere (KPIs, filters, tables) **with no code changes
+   required**.
 
 ### Optional: Skip the manual re-upload (Auto-Publish to GitHub)
 

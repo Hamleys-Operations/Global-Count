@@ -31,6 +31,11 @@
     <div class="panel-title"><span class="title-text"><span class="accent-bar"></span>1. Upload Daily Global Count Excel</span></div>
     <p class="text-muted" style="margin-top:-6px;">Drop today's Global Count workbook. The first sheet's first row is used as headers — all columns are preserved automatically, nothing is hardcoded.</p>
 
+    <label class="merge-toggle" style="display:flex;align-items:flex-start;gap:10px;margin:12px 0 16px;padding:10px 12px;border:1px solid var(--border-color, #e2e2e2);border-radius:8px;font-size:14px;cursor:pointer;">
+      <input type="checkbox" id="mergeWithExistingChk" checked style="margin-top:3px;" />
+      <span><strong>Merge with already-published data (recommended).</strong> Upload only the <strong>new</strong> rows — e.g. just today's date — and everything already on the live dashboard stays exactly as it is. Re-uploading a store/date that's already published will correct that row instead of duplicating it. Uncheck to fully replace the dashboard with only this file's rows.</span>
+    </label>
+
     <div class="dropzone" id="gcDropzone">
       <div class="dz-icon">📊</div>
       <h3>Drag &amp; drop Excel file here</h3>
@@ -48,7 +53,8 @@
       <div class="step-item" data-step="parse"><span class="step-dot">2</span><span class="step-label">Converting sheet to JSON</span><span class="step-msg"></span></div>
       <div class="step-item" data-step="validate"><span class="step-dot">3</span><span class="step-label">Validating required columns</span><span class="step-msg"></span></div>
       <div class="step-item" data-step="map"><span class="step-dot">4</span><span class="step-label">Mapping Store → RM / ROM / SD</span><span class="step-msg"></span></div>
-      <div class="step-item" data-step="build"><span class="step-dot">5</span><span class="step-label">Building gc-data.json</span><span class="step-msg"></span></div>
+      <div class="step-item" data-step="merge"><span class="step-dot">5</span><span class="step-label">Merging with published data</span><span class="step-msg"></span></div>
+      <div class="step-item" data-step="build"><span class="step-dot">6</span><span class="step-label">Building gc-data.json</span><span class="step-msg"></span></div>
     </div>
 
     <div id="alertsArea"></div>
