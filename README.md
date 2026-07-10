@@ -101,8 +101,8 @@ Only needed when stores open/close or reporting lines change:
 - **Header** — logo, title, last-updated date, Refresh, Admin, Dark/Light mode.
 - **KPI cards** — Total Global Count, Total Stores, Stores Uploaded, RM/ROM/SD
   counts, Average/Highest/Lowest GC, Completion %.
-- **Filters** — Date (calendar picker), Month, Year, RM, ROM, SD, Store search,
-  Reset.
+- **Filters** — Date From / Date To (calendar-range pickers), Month, Financial
+  Year (Apr–Mar, e.g. "FY 2026-27"), RM, ROM, SD, Store search, Reset.
 - **Tabs**:
   - **RM Summary** — RM, Total Stores, GC Stores, Completion %, Total Net Qty
     Diff, Total Net MAP Value Diff.

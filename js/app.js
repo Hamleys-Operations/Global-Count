@@ -101,6 +101,17 @@ function monthLabel(d) {
   return d.toLocaleDateString('en-GB', { month: 'short', year: 'numeric', timeZone: 'UTC' });
 }
 
+/** Indian Financial Year label (April–March), e.g. 15-Jun-2026 -> "FY 2026-27",
+ *  10-Feb-2026 -> "FY 2025-26". Uses UTC fields to match parseAnyDate's anchoring. */
+function fyLabel(d) {
+  if (!d) return null;
+  const y = d.getUTCFullYear();
+  const m = d.getUTCMonth(); // 0 = Jan ... 3 = Apr
+  const startYear = m >= 3 ? y : y - 1;
+  const endYearShort = String((startYear + 1) % 100).padStart(2, '0');
+  return `FY ${startYear}-${endYearShort}`;
+}
+
 /** Find a column index by fuzzy (case-insensitive, substring) name match */
 function findColIndex(columns, candidates) {
   const lower = columns.map(c => (c || '').toString().toLowerCase().trim());
@@ -229,6 +240,7 @@ function buildRecords() {
       dateStr: dateVal ? toLocalISODate(dateVal) : '',
       month: dateVal ? monthLabel(dateVal) : 'Unknown',
       year: dateVal ? dateVal.getUTCFullYear() : null,
+      fy: dateVal ? fyLabel(dateVal) : 'Unknown',
       gc,
       shortageQty: idx.shortageQty !== -1 ? Number(row[idx.shortageQty]) || 0 : 0,
       shortageMapValue: idx.shortageMapValue !== -1 ? Number(row[idx.shortageMapValue]) || 0 : 0,
@@ -254,21 +266,23 @@ function uniqueSorted(arr) {
 function populateFilterOptions() {
   const dates = uniqueSorted(APP.records.map(r => r.dateStr)).sort();
   const months = uniqueSorted(APP.records.map(r => r.month));
-  const years = uniqueSorted(APP.records.map(r => r.year));
+  const fys = uniqueSorted(APP.records.map(r => r.fy)).filter(v => v !== 'Unknown');
   const rms = uniqueSorted(APP.records.map(r => r.rm));
   const roms = uniqueSorted(APP.records.map(r => r.rom));
   const sds = uniqueSorted(APP.records.map(r => r.sd));
 
-  // Date is a native calendar picker (<input type="date">), not a dropdown —
-  // just bound its min/max to the range actually present in the data.
-  const dateInput = $('#fDate');
-  if (dateInput && dates.length) {
-    dateInput.min = dates[0];
-    dateInput.max = dates[dates.length - 1];
+  // Date From / Date To are native calendar pickers (<input type="date">),
+  // not dropdowns — just bind their min/max to the range actually present
+  // in the data so users can't pick out-of-range dates.
+  const dateFromInput = $('#fDateFrom');
+  const dateToInput = $('#fDateTo');
+  if (dates.length) {
+    if (dateFromInput) { dateFromInput.min = dates[0]; dateFromInput.max = dates[dates.length - 1]; }
+    if (dateToInput) { dateToInput.min = dates[0]; dateToInput.max = dates[dates.length - 1]; }
   }
 
   fillSelect('#fMonth', months);
-  fillSelect('#fYear', years);
+  fillSelect('#fYear', fys);
   fillSelect('#fRM', rms);
   fillSelect('#fROM', roms);
   fillSelect('#fSD', sds);
@@ -291,9 +305,10 @@ function fillSelect(sel, values, labelFn) {
 
 function getFilterState() {
   return {
-    date: $('#fDate').value,
+    dateFrom: $('#fDateFrom').value,
+    dateTo: $('#fDateTo').value,
     month: $('#fMonth').value,
-    year: $('#fYear').value,
+    fy: $('#fYear').value,
     rm: $('#fRM').value,
     rom: $('#fROM').value,
     sd: $('#fSD').value,
@@ -304,9 +319,10 @@ function getFilterState() {
 function applyFilters() {
   const f = getFilterState();
   APP.filtered = APP.records.filter(r => {
-    if (f.date && r.dateStr !== f.date) return false;
+    if (f.dateFrom && r.dateStr && r.dateStr < f.dateFrom) return false;
+    if (f.dateTo && r.dateStr && r.dateStr > f.dateTo) return false;
     if (f.month && r.month !== f.month) return false;
-    if (f.year && String(r.year) !== String(f.year)) return false;
+    if (f.fy && r.fy !== f.fy) return false;
     if (f.rm && r.rm !== f.rm) return false;
     if (f.rom && r.rom !== f.rom) return false;
     if (f.sd && r.sd !== f.sd) return false;
@@ -318,7 +334,7 @@ function applyFilters() {
 }
 
 function resetFilters() {
-  ['#fDate', '#fMonth', '#fYear', '#fRM', '#fROM', '#fSD'].forEach(s => $(s).value = '');
+  ['#fDateFrom', '#fDateTo', '#fMonth', '#fYear', '#fRM', '#fROM', '#fSD'].forEach(s => $(s).value = '');
   $('#fSearch').value = '';
   applyFilters();
 }
@@ -636,7 +652,7 @@ function initTabs() {
 }
 
 function initEvents() {
-  ['#fDate', '#fMonth', '#fYear', '#fRM', '#fROM', '#fSD'].forEach(s => $(s).addEventListener('change', applyFilters));
+  ['#fDateFrom', '#fDateTo', '#fMonth', '#fYear', '#fRM', '#fROM', '#fSD'].forEach(s => $(s).addEventListener('change', applyFilters));
   $('#fSearch').addEventListener('input', debounce(applyFilters, 250));
   $('#resetFiltersBtn').addEventListener('click', resetFilters);
   $('#refreshBtn').addEventListener('click', async () => {
