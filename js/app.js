@@ -378,9 +378,8 @@ function renderKPIs() {
   const sdCount = new Set(APP.storeMaster.map(m => m.sd)).size || new Set(rec.map(r => r.sd)).size;
   const gcs = rec.map(r => r.gc);
   const avgGC = gcs.length ? totalGC / gcs.length : 0;
-  const highestGC = gcs.length ? Math.max(...gcs) : 0;
-  const lowestGC = gcs.length ? Math.min(...gcs) : 0;
   const completion = totalStoresMaster ? (storesUploaded / totalStoresMaster) * 100 : 0;
+  const missedCount = getMissedStores().length;
 
   const cards = [
     { label: 'Total Global Count', value: totalGC, icon: '🌍', gold: false },
@@ -390,8 +389,7 @@ function renderKPIs() {
     { label: 'ROM Count', value: romCount, icon: '🧑‍💻', gold: true },
     { label: 'SD Count', value: sdCount, icon: '🧑‍🔧', gold: true },
     { label: 'Average Global Count', value: avgGC, icon: '📐', gold: false, decimal: true },
-    { label: 'Highest Global Count', value: highestGC, icon: '⬆️', gold: false },
-    { label: 'Lowest Global Count', value: lowestGC, icon: '⬇️', gold: false },
+    { label: 'GC Missed Stores', value: missedCount, icon: '🚫', gold: false },
     { label: 'Completion %', value: completion, icon: '✅', gold: true, suffix: '%', decimal: false },
   ];
 
@@ -469,7 +467,47 @@ function renderDateSummary() {
 }
 
 /* ---------------------------------------------------------------------- *
- * 9. RENDER: STORE WISE GC (as per Excel format — one row per count entry)
+ * 9. RENDER: GC MISSED STORES
+ * A store counts as "missed" for the current filter scope when it belongs
+ * to the selected RM/ROM/SD (if any) but has zero matching Global Count
+ * records among APP.filtered — i.e. within whatever Date/Month/FY/RM/ROM/SD
+ * filters are currently applied. This lets the same filter bar answer
+ * "who hasn't done GC yet" for any single date, a date range, or a whole
+ * RM/ROM/SD, without a separate set of controls.
+ * ---------------------------------------------------------------------- */
+function getMissedStores() {
+  const f = getFilterState();
+  const search = (f.search || '').toLowerCase();
+
+  const scoped = APP.storeMaster.filter(m =>
+    (!f.rm || m.rm === f.rm) &&
+    (!f.rom || m.rom === f.rom) &&
+    (!f.sd || m.sd === f.sd) &&
+    (!search || `${m.code} ${m.name}`.toLowerCase().includes(search))
+  );
+
+  const presentCodes = new Set(APP.filtered.map(r => r.storeCode));
+  return scoped.filter(m => !presentCodes.has(m.code));
+}
+
+function renderMissedStores() {
+  const missed = getMissedStores().sort((a, b) => a.code.localeCompare(b.code));
+  const tbody = $('#missedTable tbody');
+  tbody.innerHTML = missed.map(m => `
+    <tr>
+      <td>${m.code}</td>
+      <td><strong>${m.name}</strong></td>
+      <td>${m.rm || 'Unassigned'}</td>
+      <td>${m.rom || 'Unassigned'}</td>
+      <td>${m.sd || 'Unassigned'}</td>
+    </tr>`).join('') || '<tr><td colspan="5" class="text-muted" style="text-align:center;padding:20px;">No missed stores for the selected filters 🎉</td></tr>';
+
+  const countEl = $('#missedCount');
+  if (countEl) countEl.textContent = `${missed.length} store${missed.length === 1 ? '' : 's'}`;
+}
+
+/* ---------------------------------------------------------------------- *
+ * 10. RENDER: STORE WISE GC (as per Excel format — one row per count entry)
  * ---------------------------------------------------------------------- */
 function renderStoreWiseGC() {
   const term = ($('#storeSearchInput')?.value || '').toLowerCase();
@@ -530,7 +568,7 @@ function renderPagination(sel, current, total, onPage) {
 }
 
 /* ---------------------------------------------------------------------- *
- * 10. RENDER: RAW DATA (fully dynamic columns/rows)
+ * 11. RENDER: RAW DATA (fully dynamic columns/rows)
  * ---------------------------------------------------------------------- */
 function renderRawHead() {
   const headRow = $('#rawDataHeadRow');
@@ -574,7 +612,7 @@ function formatRawCell(cell) {
 }
 
 /* ---------------------------------------------------------------------- *
- * 11. RENDER ALL
+ * 12. RENDER ALL
  * ---------------------------------------------------------------------- */
 function renderAll() {
   renderKPIs();
@@ -582,12 +620,13 @@ function renderAll() {
   renderROM();
   renderSD();
   renderDateSummary();
+  renderMissedStores();
   renderStoreWiseGC();
   renderRaw();
 }
 
 /* ---------------------------------------------------------------------- *
- * 12. EXPORTS
+ * 13. EXPORTS
  * ---------------------------------------------------------------------- */
 function exportRawExcel() {
   const ws = XLSX.utils.aoa_to_sheet([APP.columns, ...APP.rawFilteredRows]);
@@ -625,7 +664,7 @@ function exportStoreExcel() {
 }
 
 /* ---------------------------------------------------------------------- *
- * 13. THEME / TABS / EVENTS
+ * 14. THEME / TABS / EVENTS
  * ---------------------------------------------------------------------- */
 function initTheme() {
   const saved = localStorage.getItem('hamleys-gc-theme') || 'light';
@@ -682,7 +721,7 @@ function initSortableHeaders() {
 }
 
 /* ---------------------------------------------------------------------- *
- * 14. INIT
+ * 15. INIT
  * ---------------------------------------------------------------------- */
 document.addEventListener('DOMContentLoaded', async () => {
   initTheme();

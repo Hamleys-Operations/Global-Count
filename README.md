@@ -116,7 +116,7 @@ Only needed when stores open/close or reporting lines change:
 
 - **Header** — logo, title, last-updated date, Refresh, Admin, Dark/Light mode.
 - **KPI cards** — Total Global Count, Total Stores, Stores Uploaded, RM/ROM/SD
-  counts, Average/Highest/Lowest GC, Completion %.
+  counts, Average GC, GC Missed Stores, Completion % (rounded to whole numbers).
 - **Filters** — Date From / Date To (calendar-range pickers), Month, Financial
   Year (Apr–Mar, e.g. "FY 2026-27"), RM, ROM, SD, Store search, Reset.
 - **Tabs**:
@@ -129,6 +129,11 @@ Only needed when stores open/close or reporting lines change:
     repeat between the ROM and SD tables.
   - **Date wise Completion** — Date, Total Stores, GC Stores, Completion %,
     one row per calendar date on which a Global Count was recorded.
+  - **Missed Stores** — every store that has NOT done Global Count for the
+    currently selected filters (Store Code, Store Name, RM, ROM, SD). Pick a
+    single date, a date range, or an RM/ROM/SD to see exactly who's missing
+    under that scope — this uses the same filter bar as every other tab, so
+    no separate controls are needed.
   - **Store wise GC** — one row per Global Count entry, in the same column
     shape as the source Excel: Store Code, Store Name, Date, No. of SKU's
     Counted, Shortage Qty, Shortage MAP Value, Excess Qty, Excess MAP Value,
