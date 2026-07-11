@@ -195,7 +195,20 @@ function validateColumns(columns) {
 }
 
 /* ---------------------------------------------------------------------- *
- * Mapping merge — fills RM / ROM / SD / Store Name using store-mapping.json
+ * Mapping merge — RM / ROM / SD / Store Name always come from the
+ * canonical store-mapping.json when the store code is found there.
+ *
+ * Why override instead of just filling blanks: the daily GC form lets
+ * whoever fills it type RM/ROM/SD freely, and those values can drift from
+ * the official mapping (typos, a store temporarily counted by someone
+ * else, stale copy-paste from a previous day, etc). If a store's SD in the
+ * upload doesn't match its SD in store-mapping.json, the dashboard's
+ * "Total Stores" (computed from the mapping) and "GC Stores" (computed
+ * from the upload's own SD column) stop tallying — you can end up with
+ * completion percentages over 100% for one SD and under for another.
+ * Forcing the canonical mapping's RM/ROM/SD onto every matched row
+ * guarantees both numbers are always computed from the same source, so
+ * they can never disagree.
  * ---------------------------------------------------------------------- */
 function mergeWithMapping(columns, rows, mapping) {
   const mapByCode = {};
@@ -213,7 +226,7 @@ function mergeWithMapping(columns, rows, mapping) {
   if (idxROM === -1) { outColumns.push('ROM'); idxROM = outColumns.length - 1; }
   if (idxSD === -1) { outColumns.push('SD'); idxSD = outColumns.length - 1; }
 
-  let filledCount = 0, unmatchedStores = new Set();
+  let overriddenCount = 0, unmatchedStores = new Set();
 
   const outRows = rows.map(row => {
     const r = [...row];
@@ -223,15 +236,18 @@ function mergeWithMapping(columns, rows, mapping) {
     if (!m && code) unmatchedStores.add(code);
 
     if (m) {
-      if (!r[idxRM] || String(r[idxRM]).trim() === '') { r[idxRM] = m.rm; filledCount++; }
-      if (!r[idxROM] || String(r[idxROM]).trim() === '') { r[idxROM] = m.rom; filledCount++; }
-      if (!r[idxSD] || String(r[idxSD]).trim() === '') { r[idxSD] = m.sd; filledCount++; }
+      if (String(r[idxRM] || '').trim() !== m.rm) overriddenCount++;
+      if (String(r[idxROM] || '').trim() !== m.rom) overriddenCount++;
+      if (String(r[idxSD] || '').trim() !== m.sd) overriddenCount++;
+      r[idxRM] = m.rm;
+      r[idxROM] = m.rom;
+      r[idxSD] = m.sd;
       if (idxName !== -1 && (!r[idxName] || String(r[idxName]).trim() === '')) r[idxName] = m.name;
     }
     return r;
   });
 
-  return { columns: outColumns, rows: outRows, filledCount, unmatchedStores: Array.from(unmatchedStores) };
+  return { columns: outColumns, rows: outRows, filledCount: overriddenCount, unmatchedStores: Array.from(unmatchedStores) };
 }
 
 /* ---------------------------------------------------------------------- *
@@ -343,7 +359,7 @@ function computeStats(columns, rows, mapping) {
     totalColumns: columns.length,
     uniqueStores: stores.size,
     storesMasterCount: mapping.length,
-    completion: mapping.length ? ((stores.size / mapping.length) * 100).toFixed(1) : '—',
+    completion: mapping.length ? Math.round((stores.size / mapping.length) * 100) : '—',
     rmCount: rms.size, romCount: roms.size, sdCount: sds.size,
     dateRange: dates.size, totalGC,
   };

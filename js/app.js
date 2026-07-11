@@ -44,7 +44,7 @@ function fmtNum(n, decimals) {
   return Number(n).toLocaleString('en-IN', { maximumFractionDigits: decimals ?? 0, minimumFractionDigits: decimals ?? 0 });
 }
 
-function fmtPct(n) { return (isNaN(n) ? '0.0' : Number(n).toFixed(1)) + '%'; }
+function fmtPct(n) { return (isNaN(n) ? '0' : String(Math.round(Number(n)))) + '%'; }
 
 /**
  * Parse a value (Date, Excel serial number, or "YYYY-MM-DD"/free-text string)
@@ -392,7 +392,7 @@ function renderKPIs() {
     { label: 'Average Global Count', value: avgGC, icon: '📐', gold: false, decimal: true },
     { label: 'Highest Global Count', value: highestGC, icon: '⬆️', gold: false },
     { label: 'Lowest Global Count', value: lowestGC, icon: '⬇️', gold: false },
-    { label: 'Completion %', value: completion, icon: '✅', gold: true, suffix: '%', decimal: true },
+    { label: 'Completion %', value: completion, icon: '✅', gold: true, suffix: '%', decimal: false },
   ];
 
   const grid = $('#kpiGrid');
