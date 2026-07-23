@@ -1,7 +1,7 @@
 {
  "meta": {
   "lastUpdated": "2026-07-23",
-  "generatedAt": "2026-07-23T13:39:35.699Z",
+  "generatedAt": "2026-07-23T13:45:32.582Z",
   "sourceFile": "GC 19 22.xlsx",
   "totalStoresMaster": 120
  },
@@ -27517,6 +27517,44 @@
    "Zaid ",
    "No",
    "Nothing"
+  ],
+  [
+   "THG7",
+   "Forum Chennai",
+   "Yogesh",
+   "Divya Lakshmi",
+   "Damodharan",
+   "2026-07-22",
+   20,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   "Praveen",
+   "Hari Ramkumar",
+   "NA",
+   ""
+  ],
+  [
+   "THF0",
+   "PMC Chennai",
+   "Yogesh",
+   "Divya Lakshmi",
+   "Damodharan",
+   "2026-07-22",
+   20,
+   1,
+   1790,
+   0,
+   0,
+   1,
+   1790,
+   "Akkim, Lingesh & Munik",
+   "Venkatesan ",
+   "Yes",
+   "Product didn't find "
   ]
  ],
  "storeMaster": [
