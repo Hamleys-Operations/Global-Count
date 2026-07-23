@@ -61,25 +61,41 @@ function findColIndex(columns, candidates) {
   return -1;
 }
 
+/**
+ * Convert a raw Excel date serial (e.g. from a leftover numeric cell) into a
+ * Date built via the LOCAL constructor from its literal Y/M/D/H/M/S fields —
+ * see toLocalISODate() below for why this matters.
+ */
 function excelSerialToDate(v) {
-  if (typeof v === 'number') return new Date(Math.round((v - 25569) * 86400 * 1000));
-  return null;
+  if (typeof v !== 'number') return null;
+  const u = new Date(Math.round((v - 25569) * 86400 * 1000)); // literal epoch-day math, UTC fields = literal values
+  return new Date(u.getUTCFullYear(), u.getUTCMonth(), u.getUTCDate(), u.getUTCHours(), u.getUTCMinutes(), u.getUTCSeconds());
 }
 
 /**
- * Format a Date parsed from Excel as "YYYY-MM-DD", safe against day-shift
- * bugs. SheetJS's cellDates:true values are meant to be plain calendar dates,
- * but formula-driven workbooks sometimes store a tiny fractional time
- * component alongside the serial (e.g. 18:29:50 instead of 00:00:00), which
- * can round to the wrong calendar day once rendered in a timezone ahead of
- * UTC (Hamleys India runs on IST, UTC+5:30). Anchoring at UTC-noon before
- * reading the calendar fields absorbs that drift either direction.
+ * Format a Date parsed from Excel as "YYYY-MM-DD".
+ *
+ * IMPORTANT: SheetJS's cellDates:true builds these Date objects using the
+ * LOCAL Date constructor from the literal Y/M/D/H/M/S it decodes out of the
+ * Excel serial (i.e. `new Date(y, m, d, h, mi, s)`), NOT via UTC. That means
+ * `.getUTCHours()` etc. return the literal time shifted by whatever the
+ * runtime's OS/browser timezone happens to be — e.g. under IST (UTC+5:30) an
+ * entry typed as "18:25:47" comes back as "12:55:47" via the UTC getters.
+ * A previous version of this function tried to compensate with a blanket
+ * "+12 hours, then read UTC fields" shift, but that only masked the symptom
+ * for near-midnight entries and actively corrupted every afternoon/evening
+ * entry (the vast majority of real submissions here) by rolling them to the
+ * next calendar day.
+ *
+ * The correct, timezone-independent fix: use the LOCAL getters
+ * (getFullYear/getMonth/getDate), which — because of how the Date was
+ * constructed above — always recover the exact literal values as typed in
+ * Excel, regardless of what timezone the browser/OS is set to.
  */
 function toLocalISODate(d) {
-  const shifted = new Date(d.getTime() + 12 * 60 * 60 * 1000);
-  const y = shifted.getUTCFullYear();
-  const m = String(shifted.getUTCMonth() + 1).padStart(2, '0');
-  const day = String(shifted.getUTCDate()).padStart(2, '0');
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
   return `${y}-${m}-${day}`;
 }
 

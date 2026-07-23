@@ -19,20 +19,13 @@ const APP = {
   filtered: [],         // records after filters applied
   colIdx: {},           // column-name -> index map (resolved dynamically)
   storePage: 1,
-  storePageSize: 10,
-  storeSort: { key: 'gc', dir: 'desc' },
+  storePageSize: 15,
+  storeSort: { key: 'date', dir: 'desc' },
   rawPage: 1,
   rawPageSize: 15,
   rawSort: { key: null, dir: 'asc' },
   rawFilteredRows: [],
-  charts: {},           // Chart.js instances keyed by canvas id
-};
-
-const REGION_KEYWORDS = {
-  North: ['delhi','gurgaon','gurugram','noida','chandigarh','punjab','jaipur','rajasthan','lucknow','dehradun','amritsar','ludhiana','jalandhar','haryana','shimla','manali','agra','kanpur','faridabad','panipat','karnal','udaipur','jodhpur'],
-  West: ['mumbai','pune','ahmedabad','surat','vadodara','baroda','rajkot','nagpur','nashik','goa','indore','bhopal','gujarat','maharashtra','thane','vapi','navsari','bhavnagar','anand'],
-  South: ['bangalore','bengaluru','chennai','hyderabad','kochi','cochin','coimbatore','trivandrum','kerala','tamil nadu','karnataka','telangana','andhra','mysore','vizag','vijayawada','madurai','trichy','mangalore','calicut','kozhikode','pondicherry'],
-  East: ['kolkata','bhubaneswar','patna','ranchi','guwahati','odisha','bihar','jharkhand','assam','west bengal','siliguri','durgapur','cuttack']
+  storeExportData: [],
 };
 
 /* ---------------------------------------------------------------------- *
@@ -51,37 +44,48 @@ function fmtNum(n, decimals) {
   return Number(n).toLocaleString('en-IN', { maximumFractionDigits: decimals ?? 0, minimumFractionDigits: decimals ?? 0 });
 }
 
-function fmtPct(n) { return (isNaN(n) ? '0.0' : Number(n).toFixed(1)) + '%'; }
+function fmtPct(n) { return (isNaN(n) ? '0' : String(Math.round(Number(n)))) + '%'; }
 
 /**
  * Parse a value (Date, Excel serial number, or "YYYY-MM-DD"/free-text string)
  * into a *normalized calendar-day* Date pinned at UTC noon.
  *
- * Why: Excel date serials are occasionally stored with tiny fractional time
- * components (e.g. from formula-driven sheets), and raw JS Date instants
- * near midnight can flip to the previous/next calendar day once rendered in
- * a non-UTC timezone (Hamleys India runs on IST, UTC+5:30). Anchoring every
- * parsed date at UTC noon guarantees the intended calendar day survives
- * regardless of the browser/OS timezone or minor serial drift.
+ * Each input kind needs its own read, because they carry their literal
+ * calendar values differently:
+ *  - A `Date` here would come from SheetJS's cellDates:true, which builds it
+ *    via the LOCAL Date constructor from the literal Y/M/D/H/M/S it decoded
+ *    out of the Excel serial. LOCAL getters (not UTC) recover those literal
+ *    values, regardless of what timezone the browser/OS happens to be set
+ *    to. (A previous version of this function applied a blanket "+12 hours,
+ *    then read UTC fields" shift, which corrupted every afternoon/evening
+ *    entry — the vast majority of real submissions — by rolling them to the
+ *    next calendar day under IST.)
+ *  - A raw number is a leftover Excel serial: literal epoch-day math gives a
+ *    UTC instant whose UTC fields are already the literal values, no
+ *    timezone dependency.
+ *  - An "YYYY-MM-DD" string (what gc-data.json actually stores) is parsed
+ *    directly, no Date-object detour at all.
  */
 function parseAnyDate(v) {
   if (!v && v !== 0) return null;
-  let raw;
+  let y, m, day;
   if (v instanceof Date) {
-    raw = v;
+    y = v.getFullYear(); m = v.getMonth(); day = v.getDate();
   } else if (typeof v === 'number') {
-    raw = new Date(Math.round((v - 25569) * 86400 * 1000)); // Excel serial fallback
+    const raw = new Date(Math.round((v - 25569) * 86400 * 1000));
+    y = raw.getUTCFullYear(); m = raw.getUTCMonth(); day = raw.getUTCDate();
   } else {
     const s = String(v).trim();
     const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
     if (iso) {
-      return new Date(Date.UTC(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]), 12, 0, 0));
+      y = Number(iso[1]); m = Number(iso[2]) - 1; day = Number(iso[3]);
+    } else {
+      const raw = new Date(s);
+      if (!raw || isNaN(raw.getTime())) return null;
+      y = raw.getFullYear(); m = raw.getMonth(); day = raw.getDate();
     }
-    raw = new Date(s);
   }
-  if (!raw || isNaN(raw.getTime())) return null;
-  const shifted = new Date(raw.getTime() + 12 * 60 * 60 * 1000);
-  return new Date(Date.UTC(shifted.getUTCFullYear(), shifted.getUTCMonth(), shifted.getUTCDate(), 12, 0, 0));
+  return new Date(Date.UTC(y, m, day, 12, 0, 0));
 }
 
 function fmtDate(d) {
@@ -108,12 +112,15 @@ function monthLabel(d) {
   return d.toLocaleDateString('en-GB', { month: 'short', year: 'numeric', timeZone: 'UTC' });
 }
 
-function computeRegion(storeName) {
-  const s = (storeName || '').toLowerCase();
-  for (const region in REGION_KEYWORDS) {
-    if (REGION_KEYWORDS[region].some(k => s.includes(k))) return region;
-  }
-  return 'Other';
+/** Indian Financial Year label (April–March), e.g. 15-Jun-2026 -> "FY 2026-27",
+ *  10-Feb-2026 -> "FY 2025-26". Uses UTC fields to match parseAnyDate's anchoring. */
+function fyLabel(d) {
+  if (!d) return null;
+  const y = d.getUTCFullYear();
+  const m = d.getUTCMonth(); // 0 = Jan ... 3 = Apr
+  const startYear = m >= 3 ? y : y - 1;
+  const endYearShort = String((startYear + 1) % 100).padStart(2, '0');
+  return `FY ${startYear}-${endYearShort}`;
 }
 
 /** Find a column index by fuzzy (case-insensitive, substring) name match */
@@ -200,11 +207,15 @@ function resolveColumnIndexes() {
     date: findColIndex(c, ['date of global count', 'date']),
     gc: findColIndex(c, ["no. of sku's counted", 'no of skus counted', 'sku', 'global count']),
     shortageQty: findColIndex(c, ['shortage qty']),
+    shortageMapValue: findColIndex(c, ['shortage map value']),
     excessQty: findColIndex(c, ['excess qty']),
+    excessMapValue: findColIndex(c, ['excess map value']),
     netQtyDiff: findColIndex(c, ['total net qty difference', 'net qty difference']),
     netValueDiff: findColIndex(c, ['total net map value difference', 'net map value difference']),
     doneBy: findColIndex(c, ['global count done by', 'done by']),
     validatedBy: findColIndex(c, ['global count validated by', 'validated by']),
+    movedTo2997: findColIndex(c, ['shortage qty moved to 2997', 'moved to 2997']),
+    reason: findColIndex(c, ['reason for short or excess qty', 'reason']),
   };
 }
 
@@ -236,18 +247,22 @@ function buildRecords() {
       rm: (rm || 'Unassigned').toString().trim(),
       rom: (rom || 'Unassigned').toString().trim(),
       sd: (sd || 'Unassigned').toString().trim(),
-      region: computeRegion(storeName),
       date: dateVal,
       dateStr: dateVal ? toLocalISODate(dateVal) : '',
       month: dateVal ? monthLabel(dateVal) : 'Unknown',
       year: dateVal ? dateVal.getUTCFullYear() : null,
+      fy: dateVal ? fyLabel(dateVal) : 'Unknown',
       gc,
       shortageQty: idx.shortageQty !== -1 ? Number(row[idx.shortageQty]) || 0 : 0,
+      shortageMapValue: idx.shortageMapValue !== -1 ? Number(row[idx.shortageMapValue]) || 0 : 0,
       excessQty: idx.excessQty !== -1 ? Number(row[idx.excessQty]) || 0 : 0,
+      excessMapValue: idx.excessMapValue !== -1 ? Number(row[idx.excessMapValue]) || 0 : 0,
       netQtyDiff: idx.netQtyDiff !== -1 ? Number(row[idx.netQtyDiff]) || 0 : 0,
       netValueDiff: idx.netValueDiff !== -1 ? Number(row[idx.netValueDiff]) || 0 : 0,
       doneBy: idx.doneBy !== -1 ? row[idx.doneBy] : '',
       validatedBy: idx.validatedBy !== -1 ? row[idx.validatedBy] : '',
+      movedTo2997: idx.movedTo2997 !== -1 ? row[idx.movedTo2997] : '',
+      reason: idx.reason !== -1 ? row[idx.reason] : '',
     };
   });
 }
@@ -262,26 +277,26 @@ function uniqueSorted(arr) {
 function populateFilterOptions() {
   const dates = uniqueSorted(APP.records.map(r => r.dateStr)).sort();
   const months = uniqueSorted(APP.records.map(r => r.month));
-  const years = uniqueSorted(APP.records.map(r => r.year));
+  const fys = uniqueSorted(APP.records.map(r => r.fy)).filter(v => v !== 'Unknown');
   const rms = uniqueSorted(APP.records.map(r => r.rm));
   const roms = uniqueSorted(APP.records.map(r => r.rom));
   const sds = uniqueSorted(APP.records.map(r => r.sd));
-  const regions = uniqueSorted(APP.records.map(r => r.region));
 
-  // Date is a native calendar picker (<input type="date">), not a dropdown —
-  // just bound its min/max to the range actually present in the data.
-  const dateInput = $('#fDate');
-  if (dateInput && dates.length) {
-    dateInput.min = dates[0];
-    dateInput.max = dates[dates.length - 1];
+  // Date From / Date To are native calendar pickers (<input type="date">),
+  // not dropdowns — just bind their min/max to the range actually present
+  // in the data so users can't pick out-of-range dates.
+  const dateFromInput = $('#fDateFrom');
+  const dateToInput = $('#fDateTo');
+  if (dates.length) {
+    if (dateFromInput) { dateFromInput.min = dates[0]; dateFromInput.max = dates[dates.length - 1]; }
+    if (dateToInput) { dateToInput.min = dates[0]; dateToInput.max = dates[dates.length - 1]; }
   }
 
   fillSelect('#fMonth', months);
-  fillSelect('#fYear', years);
+  fillSelect('#fYear', fys);
   fillSelect('#fRM', rms);
   fillSelect('#fROM', roms);
   fillSelect('#fSD', sds);
-  fillSelect('#fRegion', regions);
 }
 
 function fillSelect(sel, values, labelFn) {
@@ -301,13 +316,13 @@ function fillSelect(sel, values, labelFn) {
 
 function getFilterState() {
   return {
-    date: $('#fDate').value,
+    dateFrom: $('#fDateFrom').value,
+    dateTo: $('#fDateTo').value,
     month: $('#fMonth').value,
-    year: $('#fYear').value,
+    fy: $('#fYear').value,
     rm: $('#fRM').value,
     rom: $('#fROM').value,
     sd: $('#fSD').value,
-    region: $('#fRegion').value,
     search: $('#fSearch').value.trim().toLowerCase(),
   };
 }
@@ -315,13 +330,13 @@ function getFilterState() {
 function applyFilters() {
   const f = getFilterState();
   APP.filtered = APP.records.filter(r => {
-    if (f.date && r.dateStr !== f.date) return false;
+    if (f.dateFrom && r.dateStr && r.dateStr < f.dateFrom) return false;
+    if (f.dateTo && r.dateStr && r.dateStr > f.dateTo) return false;
     if (f.month && r.month !== f.month) return false;
-    if (f.year && String(r.year) !== String(f.year)) return false;
+    if (f.fy && r.fy !== f.fy) return false;
     if (f.rm && r.rm !== f.rm) return false;
     if (f.rom && r.rom !== f.rom) return false;
     if (f.sd && r.sd !== f.sd) return false;
-    if (f.region && r.region !== f.region) return false;
     if (f.search && !(`${r.storeCode} ${r.storeName}`.toLowerCase().includes(f.search))) return false;
     return true;
   });
@@ -330,7 +345,7 @@ function applyFilters() {
 }
 
 function resetFilters() {
-  ['#fDate', '#fMonth', '#fYear', '#fRM', '#fROM', '#fSD', '#fRegion'].forEach(s => $(s).value = '');
+  ['#fDateFrom', '#fDateTo', '#fMonth', '#fYear', '#fRM', '#fROM', '#fSD'].forEach(s => $(s).value = '');
   $('#fSearch').value = '';
   applyFilters();
 }
@@ -348,9 +363,11 @@ function aggregateBy(records, keyFn, masterCountFn) {
     const avg = gcs.length ? total / gcs.length : 0;
     const highest = gcs.length ? Math.max(...gcs) : 0;
     const lowest = gcs.length ? Math.min(...gcs) : 0;
+    const netQtyDiff = items.reduce((a, i) => a + (i.netQtyDiff || 0), 0);
+    const netValueDiff = items.reduce((a, i) => a + (i.netValueDiff || 0), 0);
     const masterTotal = masterCountFn ? masterCountFn(key) : stores.size;
     const completion = masterTotal ? (stores.size / masterTotal) * 100 : 0;
-    out.push({ key, stores: stores.size, total, avg, highest, lowest, completion });
+    out.push({ key, stores: stores.size, masterTotal, total, avg, highest, lowest, netQtyDiff, netValueDiff, completion });
   });
   return out.sort((a, b) => b.total - a.total);
 }
@@ -372,9 +389,8 @@ function renderKPIs() {
   const sdCount = new Set(APP.storeMaster.map(m => m.sd)).size || new Set(rec.map(r => r.sd)).size;
   const gcs = rec.map(r => r.gc);
   const avgGC = gcs.length ? totalGC / gcs.length : 0;
-  const highestGC = gcs.length ? Math.max(...gcs) : 0;
-  const lowestGC = gcs.length ? Math.min(...gcs) : 0;
   const completion = totalStoresMaster ? (storesUploaded / totalStoresMaster) * 100 : 0;
+  const missedCount = getMissedStores().length;
 
   const cards = [
     { label: 'Total Global Count', value: totalGC, icon: '🌍', gold: false },
@@ -384,9 +400,8 @@ function renderKPIs() {
     { label: 'ROM Count', value: romCount, icon: '🧑‍💻', gold: true },
     { label: 'SD Count', value: sdCount, icon: '🧑‍🔧', gold: true },
     { label: 'Average Global Count', value: avgGC, icon: '📐', gold: false, decimal: true },
-    { label: 'Highest Global Count', value: highestGC, icon: '⬆️', gold: false },
-    { label: 'Lowest Global Count', value: lowestGC, icon: '⬇️', gold: false },
-    { label: 'Completion %', value: completion, icon: '✅', gold: true, suffix: '%', decimal: true },
+    { label: 'GC Missed Stores', value: missedCount, icon: '🚫', gold: false },
+    { label: 'Completion %', value: completion, icon: '✅', gold: true, suffix: '%', decimal: false },
   ];
 
   const grid = $('#kpiGrid');
@@ -403,123 +418,39 @@ function renderKPIs() {
 }
 
 /* ---------------------------------------------------------------------- *
- * 7. RENDER: OVERVIEW
- * ---------------------------------------------------------------------- */
-function renderOverview() {
-  const rec = APP.filtered;
-
-  // Daily trend
-  const byDate = groupBy(rec, r => r.dateStr);
-  const dateKeys = Array.from(byDate.keys()).filter(Boolean).sort();
-  const dailyTotals = dateKeys.map(k => byDate.get(k).reduce((a, r) => a + r.gc, 0));
-  ChartsLib.lineChart('dailyTrendChart', dateKeys.map(k => fmtDate(k)), [{ label: 'Global Count', data: dailyTotals }]);
-
-  // Monthly trend
-  const byMonth = groupBy(rec, r => r.month);
-  const monthKeys = Array.from(byMonth.keys()).sort((a, b) => new Date('1 ' + a) - new Date('1 ' + b));
-  const monthlyTotals = monthKeys.map(k => byMonth.get(k).reduce((a, r) => a + r.gc, 0));
-  ChartsLib.barChart('monthlyTrendChart', monthKeys, [{ label: 'Global Count', data: monthlyTotals }]);
-
-  // Top / Bottom 10 stores
-  const byStore = aggregateBy(rec, r => r.storeCode, code => 1);
-  const storeNameLookup = {};
-  rec.forEach(r => storeNameLookup[r.storeCode] = r.storeName);
-  const sorted = [...byStore].sort((a, b) => b.total - a.total);
-  const top10 = sorted.slice(0, 10);
-  const bottom10 = sorted.slice(-10).reverse();
-  ChartsLib.horizontalBar('top10Chart', top10.map(s => storeNameLookup[s.key] || s.key), [{ label: 'Global Count', data: top10.map(s => s.total) }], true);
-  ChartsLib.horizontalBar('bottom10Chart', bottom10.map(s => storeNameLookup[s.key] || s.key), [{ label: 'Global Count', data: bottom10.map(s => s.total) }], false);
-
-  // Best performers
-  const rmAgg = aggregateBy(rec, r => r.rm, key => masterStoresFor('rm', key));
-  const romAgg = aggregateBy(rec, r => r.rom, key => masterStoresFor('rom', key));
-  const sdAgg = aggregateBy(rec, r => r.sd, key => masterStoresFor('sd', key));
-  const bestRM = rmAgg[0];
-  const bestROM = romAgg[0];
-  const bestSD = sdAgg[0];
-  const highestStore = sorted[0];
-  const lowestStore = sorted[sorted.length - 1];
-
-  const bestGrid = $('#overviewBestGrid');
-  const items = [
-    { label: 'Best RM', name: bestRM?.key, value: bestRM?.total, icon: '🏆' },
-    { label: 'Best ROM', name: bestROM?.key, value: bestROM?.total, icon: '🏆' },
-    { label: 'Best SD', name: bestSD?.key, value: bestSD?.total, icon: '🏆' },
-    { label: 'Highest Store', name: storeNameLookup[highestStore?.key] || highestStore?.key, value: highestStore?.total, icon: '⬆️' },
-    { label: 'Lowest Store', name: storeNameLookup[lowestStore?.key] || lowestStore?.key, value: lowestStore?.total, icon: '⬇️' },
-  ];
-  bestGrid.innerHTML = items.map(it => `
-    <div class="kpi-card gold">
-      <div class="kpi-top"><span class="kpi-label">${it.label}</span><span class="kpi-icon">${it.icon}</span></div>
-      <div class="kpi-value" style="font-size:16px;">${it.name || '—'}</div>
-      <div class="kpi-trend up">${fmtNum(it.value)} GC</div>
-    </div>`).join('');
-}
-
-/* ---------------------------------------------------------------------- *
- * 8. RENDER: RM / ROM / SD TABLES + CHARTS
+ * 7. RENDER: RM / ROM / SD TABLES
  * ---------------------------------------------------------------------- */
 function renderRM() {
   const agg = aggregateBy(APP.filtered, r => r.rm, key => masterStoresFor('rm', key));
   renderGroupTable('#rmTable tbody', agg);
-  ChartsLib.barChart('rmBarChart', agg.map(a => a.key), [{ label: 'Total GC', data: agg.map(a => a.total) }]);
-  const byDate = {};
-  APP.filtered.forEach(r => {
-    byDate[r.dateStr] = byDate[r.dateStr] || {};
-    byDate[r.dateStr][r.rm] = (byDate[r.dateStr][r.rm] || 0) + r.gc;
-  });
-  const dateKeys = Object.keys(byDate).filter(Boolean).sort();
-  const rmNames = agg.map(a => a.key);
-  ChartsLib.lineChart('rmLineChart', dateKeys.map(fmtDate), rmNames.map((rm, i) => ({
-    label: rm, data: dateKeys.map(d => byDate[d][rm] || 0)
-  })));
 }
 
 function renderROM() {
   const agg = aggregateBy(APP.filtered, r => r.rom, key => masterStoresFor('rom', key));
   renderGroupTable('#romTable tbody', agg);
-  ChartsLib.barChart('romBarChart', agg.map(a => a.key), [{ label: 'GC', data: agg.map(a => a.total) }]);
-  ChartsLib.pieChart('romPieChart', agg.map(a => a.key), agg.map(a => a.total));
-  const byDate = {};
-  APP.filtered.forEach(r => {
-    byDate[r.dateStr] = byDate[r.dateStr] || {};
-    byDate[r.dateStr][r.rom] = (byDate[r.dateStr][r.rom] || 0) + r.gc;
-  });
-  const dateKeys = Object.keys(byDate).filter(Boolean).sort();
-  const top5 = agg.slice(0, 5).map(a => a.key);
-  ChartsLib.lineChart('romTrendChart', dateKeys.map(fmtDate), top5.map(rom => ({
-    label: rom, data: dateKeys.map(d => byDate[d][rom] || 0)
-  })));
 }
 
 function renderSD() {
-  const agg = aggregateBy(APP.filtered, r => r.sd, key => masterStoresFor('sd', key));
+  // An SD name that is also a known ROM name means that person is acting as
+  // the ROM for that store, not a genuine SD — exclude those from the SD
+  // summary so ROM names don't repeat/duplicate here.
+  const romNames = new Set(APP.storeMaster.map(m => m.rom));
+  const agg = aggregateBy(APP.filtered, r => r.sd, key => masterStoresFor('sd', key))
+    .filter(a => !romNames.has(a.key));
   renderGroupTable('#sdTable tbody', agg);
-  ChartsLib.barChart('sdBarChart', agg.slice(0, 20).map(a => a.key), [{ label: 'GC', data: agg.slice(0, 20).map(a => a.total) }]);
-  const byDate = {};
-  APP.filtered.forEach(r => {
-    byDate[r.dateStr] = byDate[r.dateStr] || {};
-    byDate[r.dateStr][r.sd] = (byDate[r.dateStr][r.sd] || 0) + r.gc;
-  });
-  const dateKeys = Object.keys(byDate).filter(Boolean).sort();
-  const top5 = agg.slice(0, 5).map(a => a.key);
-  ChartsLib.lineChart('sdTrendChart', dateKeys.map(fmtDate), top5.map(sd => ({
-    label: sd, data: dateKeys.map(d => byDate[d][sd] || 0)
-  })));
 }
 
 function renderGroupTable(sel, agg) {
   const tbody = $(sel);
-  tbody.innerHTML = agg.map((a, i) => `
+  tbody.innerHTML = agg.map((a) => `
     <tr>
-      <td><span class="rank-pill">${i + 1}</span> ${a.key}</td>
-      <td>${a.stores}</td>
-      <td><strong>${fmtNum(a.total)}</strong></td>
-      <td>${fmtNum(a.avg, 1)}</td>
-      <td>${fmtNum(a.highest)}</td>
-      <td>${fmtNum(a.lowest)}</td>
+      <td><strong>${a.key}</strong></td>
+      <td>${fmtNum(a.masterTotal)}</td>
+      <td>${fmtNum(a.stores)}</td>
       <td>${completionBadge(a.completion)}</td>
-    </tr>`).join('') || '<tr><td colspan="7" class="text-muted" style="text-align:center;padding:20px;">No data for selected filters</td></tr>';
+      <td>${fmtNum(a.netQtyDiff)}</td>
+      <td>${fmtNum(a.netValueDiff)}</td>
+    </tr>`).join('') || '<tr><td colspan="6" class="text-muted" style="text-align:center;padding:20px;">No data for selected filters</td></tr>';
 }
 
 function completionBadge(pct) {
@@ -528,61 +459,104 @@ function completionBadge(pct) {
 }
 
 /* ---------------------------------------------------------------------- *
- * 9. RENDER: STORE SUMMARY (with pagination + ranking + trend + status)
+ * 8. RENDER: DATE WISE COMPLETION SUMMARY
  * ---------------------------------------------------------------------- */
-function renderStore() {
-  const byStore = groupBy(APP.filtered, r => r.storeCode);
-  let list = [];
-  byStore.forEach((items, code) => {
-    const sorted = [...items].sort((a, b) => (a.date || 0) - (b.date || 0));
-    const last = sorted[sorted.length - 1];
-    const total = items.reduce((a, r) => a + r.gc, 0);
-    const first = sorted[0];
-    const trendPct = (first && last && first.gc) ? ((last.gc - first.gc) / first.gc) * 100 : 0;
-    list.push({
-      storeCode: code, storeName: last?.storeName, rm: last?.rm, rom: last?.rom, sd: last?.sd,
-      lastDate: last?.date, month: last?.month, gc: total, trendPct,
-      status: total > 0 ? 'Counted' : 'Pending'
-    });
-  });
+function renderDateSummary() {
+  const totalStoresMaster = APP.storeMaster.length || new Set(APP.records.map(r => r.storeCode)).size;
+  const agg = aggregateBy(APP.filtered, r => r.dateStr, () => totalStoresMaster)
+    .filter(a => a.key && a.key !== 'Unassigned')
+    .sort((a, b) => a.key.localeCompare(b.key));
 
-  // include stores from master not present in filtered data as Pending
-  if (!getFilterState().search && !getFilterState().rm && !getFilterState().rom && !getFilterState().sd && !getFilterState().region) {
-    APP.storeMaster.forEach(m => {
-      if (!byStore.has(m.code)) {
-        list.push({ storeCode: m.code, storeName: m.name, rm: m.rm, rom: m.rom, sd: m.sd, lastDate: null, month: '—', gc: 0, trendPct: 0, status: 'Pending' });
-      }
-    });
-  }
+  const tbody = $('#dateSummaryTable tbody');
+  tbody.innerHTML = agg.map(a => `
+    <tr>
+      <td><strong>${fmtDate(a.key)}</strong></td>
+      <td>${fmtNum(a.masterTotal)}</td>
+      <td>${fmtNum(a.stores)}</td>
+      <td>${completionBadge(a.completion)}</td>
+    </tr>`).join('') || '<tr><td colspan="4" class="text-muted" style="text-align:center;padding:20px;">No data for selected filters</td></tr>';
+}
 
-  list.sort((a, b) => {
+/* ---------------------------------------------------------------------- *
+ * 9. RENDER: GC MISSED STORES
+ * A store counts as "missed" for the current filter scope when it belongs
+ * to the selected RM/ROM/SD (if any) but has zero matching Global Count
+ * records among APP.filtered — i.e. within whatever Date/Month/FY/RM/ROM/SD
+ * filters are currently applied. This lets the same filter bar answer
+ * "who hasn't done GC yet" for any single date, a date range, or a whole
+ * RM/ROM/SD, without a separate set of controls.
+ * ---------------------------------------------------------------------- */
+function getMissedStores() {
+  const f = getFilterState();
+  const search = (f.search || '').toLowerCase();
+
+  const scoped = APP.storeMaster.filter(m =>
+    (!f.rm || m.rm === f.rm) &&
+    (!f.rom || m.rom === f.rom) &&
+    (!f.sd || m.sd === f.sd) &&
+    (!search || `${m.code} ${m.name}`.toLowerCase().includes(search))
+  );
+
+  const presentCodes = new Set(APP.filtered.map(r => r.storeCode));
+  return scoped.filter(m => !presentCodes.has(m.code));
+}
+
+function renderMissedStores() {
+  const missed = getMissedStores().sort((a, b) => a.code.localeCompare(b.code));
+  const tbody = $('#missedTable tbody');
+  tbody.innerHTML = missed.map(m => `
+    <tr>
+      <td>${m.code}</td>
+      <td><strong>${m.name}</strong></td>
+      <td>${m.rm || 'Unassigned'}</td>
+      <td>${m.rom || 'Unassigned'}</td>
+      <td>${m.sd || 'Unassigned'}</td>
+    </tr>`).join('') || '<tr><td colspan="5" class="text-muted" style="text-align:center;padding:20px;">No missed stores for the selected filters 🎉</td></tr>';
+
+  const countEl = $('#missedCount');
+  if (countEl) countEl.textContent = `${missed.length} store${missed.length === 1 ? '' : 's'}`;
+}
+
+/* ---------------------------------------------------------------------- *
+ * 10. RENDER: STORE WISE GC (as per Excel format — one row per count entry)
+ * ---------------------------------------------------------------------- */
+function renderStoreWiseGC() {
+  const term = ($('#storeSearchInput')?.value || '').toLowerCase();
+  let list = APP.filtered.filter(r => !term || `${r.storeCode} ${r.storeName} ${r.doneBy} ${r.validatedBy} ${r.reason}`.toLowerCase().includes(term));
+
+  list = [...list].sort((a, b) => {
     const dir = APP.storeSort.dir === 'asc' ? 1 : -1;
     const k = APP.storeSort.key;
-    let va = k === 'store' ? a.storeName : k === 'lastDate' ? (a.lastDate ? a.lastDate.getTime() : 0) : a[k];
-    let vb = k === 'store' ? b.storeName : k === 'lastDate' ? (b.lastDate ? b.lastDate.getTime() : 0) : b[k];
+    let va = k === 'date' ? (a.date ? a.date.getTime() : 0) : a[k];
+    let vb = k === 'date' ? (b.date ? b.date.getTime() : 0) : b[k];
     if (typeof va === 'string') return va.localeCompare(vb) * dir;
     return ((va || 0) - (vb || 0)) * dir;
   });
-
-  list.forEach((s, i) => s.rank = i + 1);
 
   const totalPages = Math.max(1, Math.ceil(list.length / APP.storePageSize));
   APP.storePage = Math.min(APP.storePage, totalPages);
   const start = (APP.storePage - 1) * APP.storePageSize;
   const pageItems = list.slice(start, start + APP.storePageSize);
 
-  $('#storeTable tbody').innerHTML = pageItems.map(s => `
+  $('#storeTable tbody').innerHTML = pageItems.map(r => `
     <tr>
-      <td><span class="rank-pill">${s.rank}</span></td>
-      <td><strong>${s.storeName}</strong><br><span class="text-muted" style="font-size:11px;">${s.storeCode}</span></td>
-      <td>${s.rm}</td><td>${s.rom}</td><td>${s.sd}</td>
-      <td>${fmtDate(s.lastDate)}</td><td>${s.month}</td>
-      <td><strong>${fmtNum(s.gc)}</strong></td>
-      <td>${s.trendPct >= 0 ? `<span class="badge success">▲ ${fmtPct(s.trendPct)}</span>` : `<span class="badge danger">▼ ${fmtPct(Math.abs(s.trendPct))}</span>`}</td>
-      <td>${s.status === 'Counted' ? '<span class="badge success">Counted</span>' : '<span class="badge warning">Pending</span>'}</td>
-    </tr>`).join('') || '<tr><td colspan="10" style="text-align:center;padding:20px;" class="text-muted">No stores match filters</td></tr>';
+      <td>${r.storeCode}</td>
+      <td><strong>${r.storeName}</strong></td>
+      <td>${fmtDate(r.date)}</td>
+      <td><strong>${fmtNum(r.gc)}</strong></td>
+      <td>${fmtNum(r.shortageQty)}</td>
+      <td>${fmtNum(r.shortageMapValue, 2)}</td>
+      <td>${fmtNum(r.excessQty)}</td>
+      <td>${fmtNum(r.excessMapValue, 2)}</td>
+      <td>${fmtNum(r.netQtyDiff)}</td>
+      <td>${fmtNum(r.netValueDiff)}</td>
+      <td>${r.doneBy || ''}</td>
+      <td>${r.validatedBy || ''}</td>
+      <td>${r.movedTo2997 || ''}</td>
+      <td>${r.reason || ''}</td>
+    </tr>`).join('') || '<tr><td colspan="14" style="text-align:center;padding:20px;" class="text-muted">No records match filters</td></tr>';
 
-  renderPagination('#storePagination', APP.storePage, totalPages, (p) => { APP.storePage = p; renderStore(); });
+  renderPagination('#storePagination', APP.storePage, totalPages, (p) => { APP.storePage = p; renderStoreWiseGC(); });
 
   APP.storeExportData = list;
 }
@@ -602,56 +576,6 @@ function renderPagination(sel, current, total, onPage) {
   html += `<button ${current === total ? 'disabled' : ''} data-p="${current + 1}">Next ›</button>`;
   el.innerHTML = html;
   $all('button[data-p]', el).forEach(btn => btn.addEventListener('click', () => onPage(Number(btn.dataset.p))));
-}
-
-/* ---------------------------------------------------------------------- *
- * 10. RENDER: DAILY / MONTHLY TRENDS
- * ---------------------------------------------------------------------- */
-function renderDaily() {
-  const byDate = groupBy(APP.filtered, r => r.dateStr);
-  const dateKeys = Array.from(byDate.keys()).filter(Boolean).sort();
-  const totals = dateKeys.map(k => byDate.get(k).reduce((a, r) => a + r.gc, 0));
-  ChartsLib.lineChart('dailyTrendChart2', dateKeys.map(fmtDate), [{ label: 'Global Count', data: totals }]);
-  ChartsLib.areaChart('dailyComparisonChart', dateKeys.map(fmtDate), [{ label: 'Global Count', data: totals }]);
-
-  // Heat map: store x date grid (counted = filled)
-  const stores = uniqueSorted(APP.filtered.map(r => r.storeCode)).slice(0, 30);
-  const cellMap = {};
-  APP.filtered.forEach(r => { cellMap[r.storeCode + '|' + r.dateStr] = r.gc; });
-  let html = '<table class="data-table"><thead><tr><th>Store</th>' + dateKeys.map(d => `<th>${fmtDate(d)}</th>`).join('') + '</tr></thead><tbody>';
-  stores.forEach(code => {
-    html += `<tr><td>${code}</td>`;
-    dateKeys.forEach(d => {
-      const v = cellMap[code + '|' + d];
-      const intensity = v ? Math.min(1, v / 20) : 0;
-      const color = v ? `rgba(215,25,32,${0.15 + intensity * 0.65})` : 'transparent';
-      html += `<td style="background:${color};text-align:center;">${v ?? ''}</td>`;
-    });
-    html += '</tr>';
-  });
-  html += '</tbody></table>';
-  $('#heatMapWrap').innerHTML = html + '<p class="small-note" style="margin-top:8px;">Showing first 30 stores in current filter · darker = higher count</p>';
-}
-
-function renderMonthly() {
-  const byMonth = groupBy(APP.filtered, r => r.month);
-  const monthKeys = Array.from(byMonth.keys()).sort((a, b) => new Date('1 ' + a) - new Date('1 ' + b));
-  const totals = monthKeys.map(k => byMonth.get(k).reduce((a, r) => a + r.gc, 0));
-  ChartsLib.barChart('monthlyTrendChart2', monthKeys, [{ label: 'Global Count', data: totals }]);
-  ChartsLib.doughnutChart('monthlyComparisonChart', monthKeys, totals);
-
-  // Rolling average (7-day) & growth % over daily series
-  const byDate = groupBy(APP.filtered, r => r.dateStr);
-  const dateKeys = Array.from(byDate.keys()).filter(Boolean).sort();
-  const dailyTotals = dateKeys.map(k => byDate.get(k).reduce((a, r) => a + r.gc, 0));
-  const rolling = dailyTotals.map((_, i) => {
-    const slice = dailyTotals.slice(Math.max(0, i - 6), i + 1);
-    return slice.reduce((a, b) => a + b, 0) / slice.length;
-  });
-  ChartsLib.lineChart('rollingAvgChart', dateKeys.map(fmtDate), [{ label: '7-Day Rolling Avg', data: rolling.map(v => Number(v.toFixed(1))) }]);
-
-  const growth = dailyTotals.map((v, i) => i === 0 ? 0 : (dailyTotals[i - 1] ? ((v - dailyTotals[i - 1]) / dailyTotals[i - 1]) * 100 : 0));
-  ChartsLib.barChart('growthChart', dateKeys.map(fmtDate), [{ label: 'Growth %', data: growth.map(v => Number(v.toFixed(1))) }], true);
 }
 
 /* ---------------------------------------------------------------------- *
@@ -703,13 +627,12 @@ function formatRawCell(cell) {
  * ---------------------------------------------------------------------- */
 function renderAll() {
   renderKPIs();
-  renderOverview();
   renderRM();
   renderROM();
   renderSD();
-  renderStore();
-  renderDaily();
-  renderMonthly();
+  renderDateSummary();
+  renderMissedStores();
+  renderStoreWiseGC();
   renderRaw();
 }
 
@@ -729,14 +652,26 @@ function exportRawCsv() {
 }
 
 function exportStoreExcel() {
-  const data = (APP.storeExportData || []).map(s => ({
-    Rank: s.rank, Store: s.storeName, Code: s.storeCode, RM: s.rm, ROM: s.rom, SD: s.sd,
-    'Last Date': fmtDate(s.lastDate), Month: s.month, 'Global Count': s.gc, 'Trend %': s.trendPct.toFixed(1), Status: s.status
+  const data = (APP.storeExportData || []).map(r => ({
+    'Store Code': r.storeCode,
+    'Store Name': r.storeName,
+    Date: fmtDate(r.date),
+    "No. of SKU's Counted": r.gc,
+    'Shortage Qty': r.shortageQty,
+    'Shortage MAP Value': r.shortageMapValue,
+    'Excess Qty': r.excessQty,
+    'Excess MAP Value': r.excessMapValue,
+    'Total Net Qty Difference': r.netQtyDiff,
+    'Total Net MAP Value Difference': r.netValueDiff,
+    'Global Count Done by': r.doneBy,
+    'Global Count Validated by': r.validatedBy,
+    'Shortage Qty Moved to 2997 ?': r.movedTo2997,
+    'Reason for Short or Excess Qty': r.reason,
   }));
   const ws = XLSX.utils.json_to_sheet(data);
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Store Summary');
-  XLSX.writeFile(wb, `Hamleys_GC_StoreSummary_${Date.now()}.xlsx`);
+  XLSX.utils.book_append_sheet(wb, ws, 'Store wise GC');
+  XLSX.writeFile(wb, `Hamleys_GC_StoreWiseGC_${Date.now()}.xlsx`);
 }
 
 /* ---------------------------------------------------------------------- *
@@ -752,7 +687,6 @@ function initTheme() {
     document.documentElement.setAttribute('data-theme', next);
     localStorage.setItem('hamleys-gc-theme', next);
     $('#themeToggle').textContent = next === 'dark' ? '☀️' : '🌙';
-    ChartsLib.refreshAllThemes();
   });
 }
 
@@ -768,7 +702,7 @@ function initTabs() {
 }
 
 function initEvents() {
-  ['#fDate', '#fMonth', '#fYear', '#fRM', '#fROM', '#fSD', '#fRegion'].forEach(s => $(s).addEventListener('change', applyFilters));
+  ['#fDateFrom', '#fDateTo', '#fMonth', '#fYear', '#fRM', '#fROM', '#fSD'].forEach(s => $(s).addEventListener('change', applyFilters));
   $('#fSearch').addEventListener('input', debounce(applyFilters, 250));
   $('#resetFiltersBtn').addEventListener('click', resetFilters);
   $('#refreshBtn').addEventListener('click', async () => {
@@ -777,11 +711,7 @@ function initEvents() {
     $('#refreshBtn').innerHTML = '⟳ Refresh';
   });
 
-  $all('[data-download-chart]').forEach(btn => btn.addEventListener('click', () => {
-    ChartsLib.downloadChart(btn.dataset.downloadChart);
-  }));
-
-  $('#storeSearchInput').addEventListener('input', debounce(() => { APP.storePage = 1; renderStore(); }, 250));
+  $('#storeSearchInput').addEventListener('input', debounce(() => { APP.storePage = 1; renderStoreWiseGC(); }, 250));
   $('#storeExportBtn').addEventListener('click', exportStoreExcel);
 
   $('#rawSearchInput').addEventListener('input', debounce(() => { APP.rawPage = 1; renderRaw(); }, 250));
@@ -790,38 +720,13 @@ function initEvents() {
   $('#rawPrintBtn').addEventListener('click', () => window.print());
 }
 
-/* Override renderStore to respect its own search box (separate from global filters) */
-const _origRenderStore = renderStore;
-renderStore = function () {
-  const term = ($('#storeSearchInput')?.value || '').toLowerCase();
-  if (!term) return _origRenderStore();
-  const byStore = groupBy(APP.filtered.filter(r => `${r.storeCode} ${r.storeName} ${r.rm} ${r.rom} ${r.sd}`.toLowerCase().includes(term)), r => r.storeCode);
-  let list = [];
-  byStore.forEach((items, code) => {
-    const sorted = [...items].sort((a, b) => (a.date || 0) - (b.date || 0));
-    const last = sorted[sorted.length - 1];
-    const total = items.reduce((a, r) => a + r.gc, 0);
-    list.push({ storeCode: code, storeName: last?.storeName, rm: last?.rm, rom: last?.rom, sd: last?.sd, lastDate: last?.date, month: last?.month, gc: total, trendPct: 0, status: 'Counted' });
-  });
-  list.forEach((s, i) => s.rank = i + 1);
-  $('#storeTable tbody').innerHTML = list.map(s => `
-    <tr><td><span class="rank-pill">${s.rank}</span></td><td><strong>${s.storeName}</strong><br><span class="text-muted" style="font-size:11px;">${s.storeCode}</span></td>
-    <td>${s.rm}</td><td>${s.rom}</td><td>${s.sd}</td><td>${fmtDate(s.lastDate)}</td><td>${s.month}</td>
-    <td><strong>${fmtNum(s.gc)}</strong></td><td>—</td><td><span class="badge success">Counted</span></td></tr>`).join('')
-    || '<tr><td colspan="10" style="text-align:center;padding:20px;" class="text-muted">No matches</td></tr>';
-  $('#storePagination').innerHTML = '';
-  APP.storeExportData = list;
-};
-
-/* Table header sort for RM/ROM/SD tables & store table (client-side, simple) */
 function initSortableHeaders() {
-  const map = { storeTable: 'store' };
   $all('#storeTable thead th').forEach(th => {
     th.addEventListener('click', () => {
       const key = th.dataset.key;
       if (APP.storeSort.key === key) APP.storeSort.dir = APP.storeSort.dir === 'asc' ? 'desc' : 'asc';
       else { APP.storeSort.key = key; APP.storeSort.dir = 'desc'; }
-      renderStore();
+      renderStoreWiseGC();
     });
   });
 }
