@@ -50,31 +50,42 @@ function fmtPct(n) { return (isNaN(n) ? '0' : String(Math.round(Number(n)))) + '
  * Parse a value (Date, Excel serial number, or "YYYY-MM-DD"/free-text string)
  * into a *normalized calendar-day* Date pinned at UTC noon.
  *
- * Why: Excel date serials are occasionally stored with tiny fractional time
- * components (e.g. from formula-driven sheets), and raw JS Date instants
- * near midnight can flip to the previous/next calendar day once rendered in
- * a non-UTC timezone (Hamleys India runs on IST, UTC+5:30). Anchoring every
- * parsed date at UTC noon guarantees the intended calendar day survives
- * regardless of the browser/OS timezone or minor serial drift.
+ * Each input kind needs its own read, because they carry their literal
+ * calendar values differently:
+ *  - A `Date` here would come from SheetJS's cellDates:true, which builds it
+ *    via the LOCAL Date constructor from the literal Y/M/D/H/M/S it decoded
+ *    out of the Excel serial. LOCAL getters (not UTC) recover those literal
+ *    values, regardless of what timezone the browser/OS happens to be set
+ *    to. (A previous version of this function applied a blanket "+12 hours,
+ *    then read UTC fields" shift, which corrupted every afternoon/evening
+ *    entry — the vast majority of real submissions — by rolling them to the
+ *    next calendar day under IST.)
+ *  - A raw number is a leftover Excel serial: literal epoch-day math gives a
+ *    UTC instant whose UTC fields are already the literal values, no
+ *    timezone dependency.
+ *  - An "YYYY-MM-DD" string (what gc-data.json actually stores) is parsed
+ *    directly, no Date-object detour at all.
  */
 function parseAnyDate(v) {
   if (!v && v !== 0) return null;
-  let raw;
+  let y, m, day;
   if (v instanceof Date) {
-    raw = v;
+    y = v.getFullYear(); m = v.getMonth(); day = v.getDate();
   } else if (typeof v === 'number') {
-    raw = new Date(Math.round((v - 25569) * 86400 * 1000)); // Excel serial fallback
+    const raw = new Date(Math.round((v - 25569) * 86400 * 1000));
+    y = raw.getUTCFullYear(); m = raw.getUTCMonth(); day = raw.getUTCDate();
   } else {
     const s = String(v).trim();
     const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
     if (iso) {
-      return new Date(Date.UTC(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]), 12, 0, 0));
+      y = Number(iso[1]); m = Number(iso[2]) - 1; day = Number(iso[3]);
+    } else {
+      const raw = new Date(s);
+      if (!raw || isNaN(raw.getTime())) return null;
+      y = raw.getFullYear(); m = raw.getMonth(); day = raw.getDate();
     }
-    raw = new Date(s);
   }
-  if (!raw || isNaN(raw.getTime())) return null;
-  const shifted = new Date(raw.getTime() + 12 * 60 * 60 * 1000);
-  return new Date(Date.UTC(shifted.getUTCFullYear(), shifted.getUTCMonth(), shifted.getUTCDate(), 12, 0, 0));
+  return new Date(Date.UTC(y, m, day, 12, 0, 0));
 }
 
 function fmtDate(d) {
