@@ -305,47 +305,59 @@ function normalizeDateKey(v) {
 }
 
 /**
- * Merge newly-uploaded rows into the existing published dataset. Rows are
- * matched by "Store Code + Date" — if that combination already exists in
- * the published data, the new upload's row REPLACES it (so re-uploading a
- * day corrects it instead of duplicating); otherwise it's appended as a new
- * row. Everything already published for other dates/stores is left as-is.
+ * Merge newly-uploaded rows into the existing published dataset.
+ *
+ * IMPORTANT — this used to match rows by "Store Code + Date" alone and let
+ * the new upload's row REPLACE any existing row sharing that key, on the
+ * theory that re-uploading a day "corrects" it. In practice, several stores
+ * legitimately get counted TWICE on the same calendar day (an initial count
+ * plus a same-day recount) — real, valid, different rows that just happen to
+ * share a Store Code + Date. Keying on that pair alone meant every single
+ * merge — even one adding only brand-new dates with zero real overlap —
+ * silently collapsed those legitimate duplicate-day entries down to whichever
+ * one happened to be seeded last, quietly losing real GC counts every time.
+ *
+ * Fixed behaviour: merging is purely ADDITIVE. A row is only ever treated as
+ * "already present" (skipped, not duplicated) if it is byte-for-byte
+ * identical across every column to a row that's already there — i.e. the
+ * exact same file (or an overlapping row) got uploaded again unchanged. Any
+ * row that differs in any field — including a second legitimate same-day
+ * count for the same store — is always kept. Nothing already published is
+ * ever silently overwritten or dropped.
  */
 function mergeWithExistingData(existing, newColumns, newRows) {
   if (!existing || !Array.isArray(existing.columns) || !Array.isArray(existing.rows) || !existing.rows.length) {
-    return { columns: newColumns, rows: newRows, addedCount: newRows.length, updatedCount: 0, totalCount: newRows.length, merged: false };
+    return { columns: newColumns, rows: newRows, addedCount: newRows.length, duplicateCount: 0, totalCount: newRows.length, merged: false };
   }
 
   // Union of columns — existing layout first, then any genuinely new ones
   const combinedColumns = [...existing.columns];
   newColumns.forEach(c => { if (!combinedColumns.includes(c)) combinedColumns.push(c); });
 
-  const codeIdx = findColIndex(combinedColumns, ['store code']);
-  const dateIdx = findColIndex(combinedColumns, ['date of global count', 'date']);
-  const codeCol = codeIdx !== -1 ? combinedColumns[codeIdx] : null;
-  const dateCol = dateIdx !== -1 ? combinedColumns[dateIdx] : null;
-
-  function keyOf(obj) {
-    const code = codeCol ? String(obj[codeCol] || '').trim().toLowerCase() : '';
-    const date = dateCol ? normalizeDateKey(obj[dateCol]) : '';
-    return `${code}__${date}`;
-  }
-
   const existingObjs = rowsToObjects(existing.columns, existing.rows);
   const newObjs = rowsToObjects(newColumns, newRows);
 
-  const byKey = new Map();
-  existingObjs.forEach(o => byKey.set(keyOf(o), o));
+  // Exact-row signature (every column, case/whitespace-insensitive) — used
+  // only to skip a truly identical re-upload, never to collapse rows that
+  // differ in any field.
+  function sigOf(obj) {
+    return combinedColumns.map(c => String(obj[c] ?? '').trim().toLowerCase()).join('');
+  }
 
-  let addedCount = 0, updatedCount = 0;
+  const seenSignatures = new Set(existingObjs.map(sigOf));
+  const mergedObjs = existingObjs.slice();
+
+  let addedCount = 0, duplicateCount = 0;
   newObjs.forEach(o => {
-    const k = keyOf(o);
-    if (byKey.has(k)) updatedCount++; else addedCount++;
-    byKey.set(k, o); // new upload wins on conflict
+    const sig = sigOf(o);
+    if (seenSignatures.has(sig)) { duplicateCount++; return; }
+    seenSignatures.add(sig);
+    mergedObjs.push(o);
+    addedCount++;
   });
 
-  const mergedRows = objectsToRows(combinedColumns, Array.from(byKey.values()));
-  return { columns: combinedColumns, rows: mergedRows, addedCount, updatedCount, totalCount: mergedRows.length, merged: true };
+  const mergedRows = objectsToRows(combinedColumns, mergedObjs);
+  return { columns: combinedColumns, rows: mergedRows, addedCount, duplicateCount, totalCount: mergedRows.length, merged: true };
 }
 
 /* ---------------------------------------------------------------------- *
@@ -441,16 +453,16 @@ async function processGCFile(file) {
       const existing = await fetchExistingGCData();
       mergeResult = mergeWithExistingData(existing, merged.columns, merged.rows);
       if (mergeResult.merged) {
-        setStep('merge', 'done', `+${mergeResult.addedCount} new, ${mergeResult.updatedCount} updated — ${mergeResult.totalCount} total rows`);
-        if (mergeResult.updatedCount) {
-          showAlert('#alertsArea', 'info', `${mergeResult.updatedCount} row(s) matched an already-published Store Code + Date and were replaced with this upload's values (corrections). ${mergeResult.addedCount} brand-new row(s) were appended. Nothing else already published was touched.`);
+        setStep('merge', 'done', `+${mergeResult.addedCount} new, ${mergeResult.duplicateCount} identical duplicate(s) skipped — ${mergeResult.totalCount} total rows`);
+        if (mergeResult.duplicateCount) {
+          showAlert('#alertsArea', 'info', `${mergeResult.duplicateCount} row(s) were byte-for-byte identical to a row already published and were skipped. ${mergeResult.addedCount} row(s) were appended as new — this includes any additional same-day count for a store that already has an entry that day, since those are kept as separate rows, not overwritten. Nothing already published was ever replaced or removed.`);
         }
       } else {
         setStep('merge', 'done', 'No published data.json found — this upload becomes the full dataset');
       }
     } else {
       setStep('merge', 'done', 'Merge skipped — replacing with this file only');
-      mergeResult = { columns: merged.columns, rows: merged.rows, addedCount: merged.rows.length, updatedCount: 0, totalCount: merged.rows.length, merged: false };
+      mergeResult = { columns: merged.columns, rows: merged.rows, addedCount: merged.rows.length, duplicateCount: 0, totalCount: merged.rows.length, merged: false };
     }
     ADMIN.columns = mergeResult.columns;
     ADMIN.rows = mergeResult.rows;
@@ -479,7 +491,7 @@ async function processGCFile(file) {
     $('#resultActions').classList.remove('hidden');
     if (!validation.missingRequired.length) {
       const mergeNote = shouldMerge && mergeResult.merged
-        ? ` (${mergeResult.addedCount} new row(s) added, ${mergeResult.updatedCount} corrected, merged with what was already published)`
+        ? ` (${mergeResult.addedCount} new row(s) added, ${mergeResult.duplicateCount} identical duplicate(s) skipped, merged with what was already published)`
         : '';
       showAlert('#alertsArea', 'success', `Excel converted successfully — ${stats.totalRows} total rows across ${stats.totalColumns} columns${mergeNote}, ${stats.uniqueStores}/${stats.storesMasterCount} stores counted. Click "Download Updated gc-data.json" and replace the file at <code>data/gc-data.json</code> in your GitHub repo (or use Auto-Publish below).`);
     }
