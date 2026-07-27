@@ -609,9 +609,13 @@ async function publishToGithub() {
   const branch = s.branch || 'main';
   const apiBase = `https://api.github.com/repos/${s.owner}/${s.repo}/contents/${path}`;
   // Fetches the file's current SHA with cache-busting, so we never PUT against a stale version.
+  // NOTE: only `cache: 'no-store'` (a client-side fetch directive, not a request header) and the
+  // "_" query param are used for busting — a real `Cache-Control` request header is NOT
+  // CORS-safelisted and forces a preflight GitHub's API can reject, which surfaces as a generic
+  // "Failed to fetch" with no useful error detail.
   async function fetchFreshSha() {
     const getRes = await fetch(`${apiBase}?ref=${branch}&_=${Date.now()}`, {
-      headers: { Authorization: `token ${s.token}`, 'Cache-Control': 'no-cache' },
+      headers: { Authorization: `token ${s.token}` },
       cache: 'no-store',
     });
     if (getRes.ok) { const j = await getRes.json(); return j.sha; }
